@@ -1,0 +1,37 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["name", "email", "phone", "password"],
+    "properties": {
+      "name": {
+        "bsonType": "string",
+        "minLength": 2,
+        "maxLength": 50,
+        "pattern": "^[а-яА-ЯёЁa-zA-Z\\s]+$",
+        "description": "Имя должно содержать только буквы, 2-50 символов"
+      },
+      "email": {
+        "bsonType": "string",
+        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+        "description": "Email должен быть валидным"
+      },
+      "phone": {
+        "bsonType": "string",
+        "pattern": "^\\+?[1-9]\\d{1,14}$",
+        "description": "Телефон должен быть в формате +77771234567"
+      },
+      "password": {
+        "bsonType": "string",
+        "minLength": 8,
+        "description": "Пароль должен содержать минимум 8 символов"
+      },
+      "createdAt": {
+        "bsonType": "date"
+      },
+      "updatedAt": {
+        "bsonType": "date"
+      }
+    }
+  }
+}
+

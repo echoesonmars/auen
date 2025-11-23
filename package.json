@@ -6,21 +6,36 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "create-collections": "ts-node scripts/create-collections.ts",
+    "check-collections": "ts-node scripts/check-collections.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.554.0",
+    "mongoose": "^9.0.0",
+    "motion": "^12.23.24",
+    "next": "14.2.33",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.33"
+    "rough-notation": "^0.5.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.33",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.33"
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
   }
 }

@@ -1,16 +1,23 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import Navbar from "./components/Navbar";
+import { Providers } from "./components/Providers";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+const geist = localFont({
+  src: "./fonts/Geist.ttf",
+  variable: "--font-geist",
+  weight: "400",
 });
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+const kyiv = localFont({
+  src: "./fonts/Kyiv.ttf",
+  variable: "--font-kyiv",
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -24,11 +31,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geist.variable} ${geistMono.variable} ${kyiv.variable} antialiased`}
       >
-        {children}
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
