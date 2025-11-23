@@ -41,7 +41,7 @@ export default function FAQSection() {
           as="h2"
           animation="slideUp"
           by="word"
-          startOnView={true}
+          startOnView={false}
           delay={0.1}
           className="text-color-dark text-xl sm:text-2xl md:text-3xl font-bold mb-5 sm:mb-6 md:mb-8 text-center"
         >
@@ -52,19 +52,19 @@ export default function FAQSection() {
           {faqs.map((faq, index) => (
             <BlurFade
               key={index}
-              inView={true}
-              delay={index * 0.1}
+              inView={false}
+              delay={index * 0.08}
               direction="up"
             >
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light overflow-hidden transition-all duration-200 hover:shadow-xl">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-md border border-color-light overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-color-medium hover:-translate-y-0.5">
                 <button
                   onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                  className="w-full px-4 sm:px-5 md:px-6 py-4 sm:py-5 flex items-center justify-between text-left hover:bg-color-lightest transition-colors"
+                  className="w-full px-4 sm:px-5 md:px-6 py-4 sm:py-5 flex items-center justify-between text-left transition-all duration-200"
                 >
                   <span className="text-sm sm:text-base md:text-lg font-semibold text-color-dark pr-4 sm:pr-6 flex-1">
                     {faq.question}
                   </span>
-                  <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-color-medium flex items-center justify-center transition-all duration-200 ${openIndex === index ? 'rotate-180 bg-color-dark' : ''}`}>
+                  <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-color-medium flex items-center justify-center transition-all duration-300 ${openIndex === index ? 'rotate-180 bg-color-dark scale-110' : 'hover:bg-color-dark hover:scale-105'}`}>
                     <svg
                       className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white"
                       fill="none"
@@ -80,7 +80,7 @@ export default function FAQSection() {
                     </svg>
                   </div>
                 </button>
-                <div className={`overflow-hidden transition-all duration-300 ${
+                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
                   openIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 }`}>
                   <div className="px-4 sm:px-5 md:px-6 pb-4 sm:pb-5 md:pb-6">

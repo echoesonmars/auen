@@ -74,6 +74,7 @@ export default function HeroSection() {
     let timeout: NodeJS.Timeout;
     let cursorTimeout: NodeJS.Timeout;
 
+    // Запускаем анимацию сразу при монтировании
     if (displayedText.length < word.length) {
       // Печатаем букву за буквой
       timeout = setTimeout(() => {
@@ -91,6 +92,14 @@ export default function HeroSection() {
       clearTimeout(cursorTimeout);
     };
   }, [displayedText, word]);
+
+  // Запускаем анимацию сразу при монтировании компонента
+  useEffect(() => {
+    if (displayedText === "") {
+      setDisplayedText(word.charAt(0));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close location dropdown when clicking outside
   useEffect(() => {
@@ -139,7 +148,7 @@ export default function HeroSection() {
                   as="span"
                   animation="slideUp" by="character"
                   delay={0.1}
-                  startOnView={true}
+                  startOnView={false}
                   className="block"
                 >
                   Арендуй
@@ -151,19 +160,19 @@ export default function HeroSection() {
                   </span>
                 </span>
                 <Highlighter
-                  action="underline"
+                  action="highlight"
                   color="#3F72AF"
                   strokeWidth={2}
-                  animationDuration={800}
-                  isView={false}
+                  animationDuration={1500}
+                  isView={true}
                 >
                   <TextAnimate
                     as="span"
                     by="character"
                     animation="fadeIn"
                     delay={0.3}
-                    startOnView={true}
-                    className="block"
+                    startOnView={false}
+                    className="block text-white"
                   >
                     за минуты.
                   </TextAnimate>
@@ -175,7 +184,7 @@ export default function HeroSection() {
                 as="p"
                 animation="slideUp" by="character"
                 delay={0.5}
-                startOnView={true}
+                startOnView={false}
                 className="text-base sm:text-lg md:text-xl text-color-medium max-w-2xl leading-relaxed"
               >
                 Играй, записывай, создавай — без лишней возни и переплат.
