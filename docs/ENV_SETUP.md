@@ -7,8 +7,8 @@
 ```env
 # MongoDB Connection String
 # Получите connection string из MongoDB Atlas
-# Формат: mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/database-name?retryWrites=true&w=majority
-MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/auen?retryWrites=true&w=majority
+# Формат: mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority
 
 # NextAuth Configuration
 # Сгенерируйте секретный ключ командой: openssl rand -base64 32
@@ -18,7 +18,7 @@ NEXTAUTH_URL=http://localhost:3000
 
 # OpenAI GPT API
 # Получите API ключ на https://platform.openai.com/api-keys
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_API_KEY=<your-openai-api-key-here>
 
 # Google OAuth (опционально, для входа через Google)
 # Настройте на https://console.cloud.google.com/apis/credentials

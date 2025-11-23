@@ -24,15 +24,17 @@
 
 1. Перейдите в "Database" → "Connect"
 2. Выберите "Connect your application"
-3. Скопируйте connection string (выглядит как: `mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/...`)
-4. Замените `<password>` на ваш пароль
-5. Замените `<dbname>` на `auen` (или другое имя базы данных)
+3. Скопируйте connection string (выглядит как: `mongodb+srv://<username>:<password>@<cluster-url>/<database-name>...`)
+4. Замените `<username>` на ваше имя пользователя
+5. Замените `<password>` на ваш пароль
+6. Замените `<cluster-url>` на URL вашего кластера
+7. Замените `<database-name>` на `auen` (или другое имя базы данных)
 
 ## Шаг 4: Настройка проекта
 
 1. Создайте файл `.env.local` в корне проекта:
 ```bash
-MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/auen?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority
 ```
 
 2. Установите зависимости:
