@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Chat from "@/models/Chat";
 import Message from "@/models/Message";
-import User from "@/models/User";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,8 +32,8 @@ export async function GET(request: NextRequest) {
     const chatsData = await Promise.all(
       chats.map(async (chat) => {
         const otherParticipant = chat.participants.find(
-          (p: any) => p._id.toString() !== userId
-        );
+          (p: { _id: { toString: () => string }; name?: string; email?: string }) => p._id.toString() !== userId
+        ) as { _id: { toString: () => string }; name?: string; email?: string } | undefined;
 
         // Подсчитываем непрочитанные сообщения
         const unreadCount = await Message.countDocuments({
@@ -73,14 +72,15 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Get chats error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Get chats error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при получении чатов",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

@@ -35,7 +35,7 @@ export async function GET(
 
     // Находим другого участника
     const receiver = chat.participants.find(
-      (p: any) => p._id.toString() !== userId
+      (p: { _id: { toString: () => string } }) => p._id.toString() !== userId
     );
 
     if (!receiver) {
@@ -57,14 +57,15 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Get receiver error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Get receiver error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при получении получателя",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

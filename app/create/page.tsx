@@ -110,7 +110,7 @@ export default function CreatePage() {
         result = await response.json();
         console.log("Response status:", response.status);
         console.log("Response data:", result);
-      } catch (jsonError: any) {
+      } catch (jsonError: unknown) {
         console.error("JSON parse error:", jsonError);
         const text = await response.text();
         console.error("Response text:", text.substring(0, 500));
@@ -132,9 +132,10 @@ export default function CreatePage() {
       // Успешно создано
       alert("Объявление успешно создано!");
       window.location.href = "/profile";
-    } catch (error: any) {
-      console.error("Error creating ad:", error);
-      setErrors({ general: error.message || "Ошибка при создании объявления. Проверьте подключение к интернету." });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error creating ad:", err);
+      setErrors({ general: err.message || "Ошибка при создании объявления. Проверьте подключение к интернету." });
     } finally {
       setIsSubmitting(false);
     }

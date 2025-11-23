@@ -72,7 +72,7 @@ export default function RegisterPage() {
       try {
         result = await response.json();
         console.log("Response data:", result);
-      } catch (jsonError: any) {
+      } catch (jsonError: unknown) {
         console.error("JSON parse error:", jsonError);
         const text = await response.text();
         console.error("Response text:", text.substring(0, 500));
@@ -102,9 +102,10 @@ export default function RegisterPage() {
       
       // Перенаправляем на главную страницу
       router.push("/");
-    } catch (error: any) {
-      console.error("Register error:", error);
-      setErrors({ general: error.message || "Ошибка при регистрации. Проверьте подключение к интернету." });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Register error:", err);
+      setErrors({ general: err.message || "Ошибка при регистрации. Проверьте подключение к интернету." });
       setLoading(false);
     }
   };

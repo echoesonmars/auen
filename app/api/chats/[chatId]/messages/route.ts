@@ -25,7 +25,7 @@ export async function GET(
     // Проверяем, что пользователь является участником чата
     const chat = await Chat.findById(params.chatId);
 
-    if (!chat || !chat.participants.includes(userId as any)) {
+    if (!chat || !chat.participants.some((p: { toString: () => string }) => p.toString() === userId)) {
       return NextResponse.json(
         {
           success: false,
@@ -59,14 +59,15 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Get messages error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Get messages error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при получении сообщений",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );
@@ -122,14 +123,15 @@ export async function POST(
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error("Create message error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Create message error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при отправке сообщения",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

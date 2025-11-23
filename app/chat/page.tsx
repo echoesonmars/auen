@@ -19,7 +19,7 @@ interface Chat {
   lastMessage: string;
   time: string;
   unread: number;
-  participants?: any[];
+  participants?: Array<{ _id: string; name: string; email: string }>;
 }
 
 export default function ChatPage() {
@@ -32,6 +32,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     loadChats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -404,7 +405,7 @@ export default function ChatPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-color-lightest/50">
-                {currentChat?.messages.map((message) => (
+                {messages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}

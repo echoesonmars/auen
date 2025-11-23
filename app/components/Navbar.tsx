@@ -14,7 +14,7 @@ export default function Navbar() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isAuthenticated) {
       e.preventDefault();
       router.push("/login");
@@ -76,7 +76,7 @@ export default function Navbar() {
             {/* Chat */}
             <Link
               href="/chat"
-              onClick={(e) => handleProtectedLink(e, "/chat")}
+              onClick={(e) => handleProtectedLink(e)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium relative"
             >
               <svg
@@ -98,7 +98,7 @@ export default function Navbar() {
             {/* Profile */}
             <Link
               href="/profile"
-              onClick={(e) => handleProtectedLink(e, "/profile")}
+              onClick={(e) => handleProtectedLink(e)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium"
             >
               <svg
@@ -120,7 +120,7 @@ export default function Navbar() {
             {/* Create ad button */}
             <Link
               href="/create"
-              onClick={(e) => handleProtectedLink(e, "/create")}
+              onClick={(e) => handleProtectedLink(e)}
               className="bg-color-medium text-white px-4 lg:px-5 py-2 rounded-lg font-medium hover:bg-color-dark transition-colors text-sm shadow-md hover:shadow-lg whitespace-nowrap"
             >
               <span className="hidden lg:inline">Создать объявление</span>
@@ -220,7 +220,7 @@ export default function Navbar() {
                 >
                   <Link
                     href="/chat"
-                    onClick={(e) => handleProtectedLink(e, "/chat")}
+                    onClick={(e) => handleProtectedLink(e)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium w-full relative"
                   >
                     <svg
@@ -248,7 +248,7 @@ export default function Navbar() {
                 >
                   <Link
                     href="/profile"
-                    onClick={(e) => handleProtectedLink(e, "/profile")}
+                    onClick={(e) => handleProtectedLink(e)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium w-full"
                   >
                     <svg
@@ -276,7 +276,7 @@ export default function Navbar() {
                 >
                   <Link
                     href="/create"
-                    onClick={(e) => handleProtectedLink(e, "/create")}
+                    onClick={(e) => handleProtectedLink(e)}
                     className="block bg-color-medium text-white px-3 py-2 rounded-lg font-medium hover:bg-color-dark transition-colors text-sm shadow-md hover:shadow-lg w-full text-center"
                   >
                     Создать объявление

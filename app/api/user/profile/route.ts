@@ -66,14 +66,15 @@ export async function PUT(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Update profile error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Update profile error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при обновлении профиля",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

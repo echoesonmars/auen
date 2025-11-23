@@ -47,6 +47,7 @@ export default function AdsPage() {
 
   useEffect(() => {
     loadAds();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedLocation, page]);
 
   const loadAds = async () => {

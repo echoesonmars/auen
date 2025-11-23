@@ -106,7 +106,7 @@ AdSchema.index({ createdAt: -1 });
 AdSchema.index({ views: -1 });
 
 // Виртуальное поле для популярности
-AdSchema.virtual("popularity").get(function () {
+AdSchema.virtual("popularity").get(function (this: { createdAt: Date; views: number }) {
   const daysSinceCreation =
     (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24);
   return this.views / (daysSinceCreation + 1);

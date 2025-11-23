@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
             phone: user.phone,
             createdAt: user.createdAt,
           },
-          ads: ads.map((ad: any) => ({
+          ads: ads.map((ad) => ({
             id: ad._id.toString(),
             title: ad.title,
             category: ad.category,
@@ -60,14 +60,15 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Get user error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Get user error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при получении данных пользователя",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

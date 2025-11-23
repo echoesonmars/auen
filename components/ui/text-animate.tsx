@@ -317,7 +317,7 @@ const TextAnimateBase = ({
   accessible = true,
   ...props
 }: TextAnimateProps) => {
-  const MotionComponent = motion(Component as any)
+  const MotionComponent = motion(Component as React.ComponentType<React.HTMLAttributes<HTMLElement>>)
 
   let segments: string[] = []
   switch (by) {

@@ -3,8 +3,17 @@ import connectDB from "@/lib/mongodb";
 import Ad from "@/models/Ad";
 import { createAdSchema, validate, formatValidationErrors } from "@/lib/validations";
 
+interface ApiResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  errors?: Record<string, string>;
+  data?: unknown;
+  errorDetails?: unknown;
+}
+
 export async function POST(request: NextRequest) {
-  const jsonResponse = (data: any, status: number = 200) => {
+  const jsonResponse = (data: ApiResponse, status: number = 200) => {
     return NextResponse.json(data, { 
       status,
       headers: { "Content-Type": "application/json" }
@@ -16,12 +25,12 @@ export async function POST(request: NextRequest) {
     try {
       await connectDB();
       console.log("Database connected successfully");
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       console.error("Database connection error:", dbError);
       return jsonResponse({
         success: false,
         message: "Ошибка подключения к базе данных",
-        error: process.env.NODE_ENV === "development" ? dbError.message : undefined,
+        error: process.env.NODE_ENV === "development" && dbError instanceof Error ? dbError.message : undefined,
       }, 500);
     }
 
@@ -30,11 +39,11 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
       console.log("Received ad data:", { ...body, images: body.images?.length || 0 });
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
       return jsonResponse({
         success: false,
         message: "Неверный формат данных",
-        error: process.env.NODE_ENV === "development" ? parseError.message : undefined,
+        error: process.env.NODE_ENV === "development" && parseError instanceof Error ? parseError.message : undefined,
       }, 400);
     }
 
@@ -86,33 +95,34 @@ export async function POST(request: NextRequest) {
       });
       
       console.log("Ad created successfully:", ad._id);
-    } catch (createError: any) {
-      console.error("Ad creation error:", createError);
-      console.error("Error name:", createError.name);
-      console.error("Error message:", createError.message);
-      console.error("Error code:", createError.code);
-      console.error("Error stack:", createError.stack);
-      if (createError.errors) {
-        console.error("Error details:", JSON.stringify(createError.errors, null, 2));
+    } catch (createError: unknown) {
+      const error = createError as Error & { name?: string; code?: string; errors?: Record<string, { message: string }> };
+      console.error("Ad creation error:", error);
+      if (error.name) console.error("Error name:", error.name);
+      if (error.message) console.error("Error message:", error.message);
+      if (error.code) console.error("Error code:", error.code);
+      if (error.stack) console.error("Error stack:", error.stack);
+      if (error.errors) {
+        console.error("Error details:", JSON.stringify(error.errors, null, 2));
       }
       
       // Обработка ошибок валидации Mongoose
-      if (createError.name === "ValidationError") {
+      if (error.name === "ValidationError") {
         const mongooseErrors: Record<string, string> = {};
-        if (createError.errors && typeof createError.errors === "object" && !Array.isArray(createError.errors)) {
+        if (error.errors && typeof error.errors === "object" && !Array.isArray(error.errors)) {
           try {
-            Object.keys(createError.errors).forEach((key) => {
-              if (createError.errors && createError.errors[key] && createError.errors[key].message) {
-                mongooseErrors[key] = createError.errors[key].message;
+            Object.keys(error.errors).forEach((key) => {
+              if (error.errors && error.errors[key] && error.errors[key].message) {
+                mongooseErrors[key] = error.errors[key].message;
               }
             });
-          } catch (forEachError: any) {
+          } catch (forEachError: unknown) {
             console.error("Error processing validation errors:", forEachError);
-            mongooseErrors.general = createError.message || "Ошибка валидации данных";
+            mongooseErrors.general = error.message || "Ошибка валидации данных";
           }
         }
         if (Object.keys(mongooseErrors).length === 0) {
-          mongooseErrors.general = createError.message || "Ошибка валидации данных";
+          mongooseErrors.general = error.message || "Ошибка валидации данных";
         }
         return jsonResponse({
           success: false,
@@ -122,11 +132,11 @@ export async function POST(request: NextRequest) {
       }
       
       // Обработка ошибок валидации MongoDB
-      if (createError.message?.includes("validation") || createError.message?.includes("Document failed validation") || createError.name === "MongoServerError") {
+      if (error.message?.includes("validation") || error.message?.includes("Document failed validation") || error.name === "MongoServerError") {
         return jsonResponse({
           success: false,
           message: "Ошибка валидации данных в базе данных",
-          error: process.env.NODE_ENV === "development" ? createError.message : undefined,
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
         }, 400);
       }
       
@@ -138,17 +148,18 @@ export async function POST(request: NextRequest) {
       data: ad,
       message: "Объявление успешно создано",
     }, 201);
-  } catch (error: any) {
-    console.error("Create ad error:", error);
-    console.error("Error stack:", error.stack);
+  } catch (error: unknown) {
+    const err = error as Error & { name?: string; code?: string };
+    console.error("Create ad error:", err);
+    if (err.stack) console.error("Error stack:", err.stack);
 
     return jsonResponse({
       success: false,
       message: "Ошибка при создании объявления",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
       errorDetails: process.env.NODE_ENV === "development" ? {
-        name: error.name,
-        code: error.code,
+        name: err.name,
+        code: err.code,
       } : undefined,
     }, 500);
   }
@@ -164,7 +175,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const query: any = { status: "active" };
+    const query: Record<string, unknown> = { status: "active" };
 
     if (category) {
       query.category = category;
@@ -198,14 +209,15 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Get ads error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Get ads error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при получении объявлений",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

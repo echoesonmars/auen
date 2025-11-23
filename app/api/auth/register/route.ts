@@ -3,9 +3,18 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { registerSchema, validate, formatValidationErrors } from "@/lib/validations";
 
+interface RegisterResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  errors?: Record<string, string>;
+  data?: unknown;
+  errorDetails?: unknown;
+}
+
 export async function POST(request: NextRequest) {
   // Убеждаемся, что всегда возвращаем JSON
-  const jsonResponse = (data: any, status: number = 200) => {
+  const jsonResponse = (data: RegisterResponse, status: number = 200) => {
     return NextResponse.json(data, { 
       status,
       headers: { "Content-Type": "application/json" }
@@ -17,17 +26,18 @@ export async function POST(request: NextRequest) {
     try {
       await connectDB();
       console.log("Database connected successfully");
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
+      const dbErr = dbError as Error & { name?: string; code?: string };
       console.error("Database connection error:", dbError);
       console.error("Error details:", {
-        message: dbError.message,
-        name: dbError.name,
-        code: dbError.code,
+        message: dbErr.message,
+        name: dbErr.name,
+        code: dbErr.code,
       });
       return jsonResponse({
         success: false,
         message: "Ошибка подключения к базе данных",
-        error: process.env.NODE_ENV === "development" ? dbError.message : undefined,
+        error: process.env.NODE_ENV === "development" && dbError instanceof Error ? dbError.message : undefined,
       }, 500);
     }
 
@@ -35,11 +45,11 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
       return jsonResponse({
         success: false,
         message: "Неверный формат данных",
-        error: process.env.NODE_ENV === "development" ? parseError.message : undefined,
+        error: process.env.NODE_ENV === "development" && parseError instanceof Error ? parseError.message : undefined,
       }, 400);
     }
 
@@ -53,7 +63,8 @@ export async function POST(request: NextRequest) {
       }, 400);
     }
 
-    let { name, email, phone, password } = validation.data;
+    const { name, email, phone: phoneRaw, password } = validation.data;
+    let phone = phoneRaw;
 
     // Нормализация телефона: убираем все пробелы, скобки, дефисы
     // Оставляем только цифры и знак +
@@ -100,25 +111,31 @@ export async function POST(request: NextRequest) {
         password,
       });
       console.log("User created successfully:", user._id);
-    } catch (createError: any) {
-      console.error("User creation error:", createError);
-      console.error("Error name:", createError.name);
-      console.error("Error message:", createError.message);
-      console.error("Error code:", createError.code);
-      console.error("Full error:", JSON.stringify(createError, null, 2));
+    } catch (createError: unknown) {
+      const error = createError as Error & { 
+        name?: string; 
+        code?: number; 
+        errors?: Record<string, { message: string }>; 
+        keyPattern?: Record<string, number> 
+      };
+      console.error("User creation error:", error);
+      if (error.name) console.error("Error name:", error.name);
+      if (error.message) console.error("Error message:", error.message);
+      if (error.code) console.error("Error code:", error.code);
+      console.error("Full error:", JSON.stringify(error, null, 2));
       
       // Обработка ошибок валидации Mongoose
-      if (createError.name === "ValidationError") {
+      if (error.name === "ValidationError") {
         const mongooseErrors: Record<string, string> = {};
-        if (createError.errors && typeof createError.errors === "object") {
-          Object.keys(createError.errors).forEach((key) => {
-            if (createError.errors[key] && createError.errors[key].message) {
-              mongooseErrors[key] = createError.errors[key].message;
+        if (error.errors && typeof error.errors === "object") {
+          Object.keys(error.errors).forEach((key) => {
+            if (error.errors && error.errors[key] && error.errors[key].message) {
+              mongooseErrors[key] = error.errors[key].message;
             }
           });
         }
         if (Object.keys(mongooseErrors).length === 0) {
-          mongooseErrors.general = createError.message || "Ошибка валидации данных";
+          mongooseErrors.general = error.message || "Ошибка валидации данных";
         }
         return jsonResponse({
           success: false,
@@ -128,21 +145,21 @@ export async function POST(request: NextRequest) {
       }
       
       // Обработка ошибок валидации MongoDB (если валидации созданы вручную)
-      if (createError.message?.includes("validation") || createError.message?.includes("Document failed validation") || createError.name === "MongoServerError") {
+      if (error.message?.includes("validation") || error.message?.includes("Document failed validation") || error.name === "MongoServerError") {
         const mongoErrors: Record<string, string> = {};
         
         // Пытаемся извлечь детали ошибки
-        if (createError.errors && typeof createError.errors === "object" && !Array.isArray(createError.errors)) {
-          Object.keys(createError.errors).forEach((key) => {
-            if (createError.errors[key] && createError.errors[key].message) {
-              mongoErrors[key] = createError.errors[key].message;
+        if (error.errors && typeof error.errors === "object" && !Array.isArray(error.errors)) {
+          Object.keys(error.errors).forEach((key) => {
+            if (error.errors && error.errors[key] && error.errors[key].message) {
+              mongoErrors[key] = error.errors[key].message;
             }
           });
         }
         
         // Если не удалось извлечь детали из errors, пробуем определить проблемное поле из сообщения
         if (Object.keys(mongoErrors).length === 0) {
-          const errorMsg = createError.message || "";
+          const errorMsg = error.message || "";
           if (errorMsg.toLowerCase().includes("name") || errorMsg.includes("имя")) {
             mongoErrors.name = "Имя не соответствует требованиям валидации MongoDB";
           } else if (errorMsg.toLowerCase().includes("email")) {
@@ -160,13 +177,13 @@ export async function POST(request: NextRequest) {
           success: false,
           errors: mongoErrors,
           message: "Ошибка валидации данных в базе данных",
-          error: process.env.NODE_ENV === "development" ? createError.message : undefined,
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
         }, 400);
       }
       
       // Обработка ошибок MongoDB (дубликаты и т.д.)
-      if (createError.code === 11000) {
-        const field = Object.keys(createError.keyPattern || {})[0] || "email";
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern || {})[0] || "email";
         return jsonResponse({
           success: false,
           errors: { [field]: `Пользователь с таким ${field === "email" ? "email" : field} уже существует` },
@@ -190,15 +207,16 @@ export async function POST(request: NextRequest) {
       data: userResponse,
       message: "Пользователь успешно зарегистрирован",
     }, 201);
-  } catch (error: any) {
-    console.error("Registration error:", error);
-    console.error("Error stack:", error.stack);
-    console.error("Error name:", error.name);
-    console.error("Error code:", error.code);
-    console.error("Error message:", error.message);
+  } catch (error: unknown) {
+    const err = error as Error & { name?: string; code?: number };
+    console.error("Registration error:", err);
+    if (err.stack) console.error("Error stack:", err.stack);
+    if (err.name) console.error("Error name:", err.name);
+    if (err.code) console.error("Error code:", err.code);
+    if (err.message) console.error("Error message:", err.message);
 
     // Обработка ошибок MongoDB
-    if (error.code === 11000) {
+    if (err.code === 11000) {
       return jsonResponse({
         success: false,
         errors: { email: "Пользователь с таким email уже существует" },
@@ -206,31 +224,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Обработка ошибок валидации MongoDB (если валидации созданы вручную)
-    if (error.name === "ValidationError" || error.message?.includes("validation")) {
+    if (err.name === "ValidationError" || err.message?.includes("validation")) {
       return jsonResponse({
         success: false,
         message: "Ошибка валидации данных",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       }, 400);
     }
 
     // Обработка ошибок подключения
-    if (error.name === "MongoServerError" || error.name === "MongooseError") {
+    if (err.name === "MongoServerError" || err.name === "MongooseError") {
       return jsonResponse({
         success: false,
         message: "Ошибка базы данных",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       }, 500);
     }
 
     return jsonResponse({
       success: false,
       message: "Ошибка при регистрации",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
       errorDetails: process.env.NODE_ENV === "development" ? {
-        name: error.name,
-        code: error.code,
-        stack: error.stack,
+        name: err.name,
+        code: err.code,
+        stack: err.stack,
       } : undefined,
     }, 500);
   }

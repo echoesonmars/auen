@@ -66,14 +66,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Login error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Login error:", err);
 
     return NextResponse.json(
       {
         success: false,
         message: "Ошибка при входе",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );
