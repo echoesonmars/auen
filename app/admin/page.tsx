@@ -55,6 +55,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     checkAdminAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function AdminPage() {
         loadUsers();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, activeTab, adsPage, adsStatusFilter]);
 
   const checkAdminAccess = async () => {

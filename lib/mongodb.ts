@@ -35,10 +35,13 @@ async function connectDB() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("✓ Connected to MongoDB database:", mongoose.connection.db.databaseName);
-      if (mongoose.connection.db.databaseName === "test") {
-        console.warn("⚠️  WARNING: Connected to 'test' database! Check MONGODB_URI in .env.local");
-        console.warn("   Connection string should be: mongodb+srv://.../auen?retryWrites=true&w=majority");
+      const dbName = mongoose.connection.db?.databaseName;
+      if (dbName) {
+        console.log("✓ Connected to MongoDB database:", dbName);
+        if (dbName === "test") {
+          console.warn("⚠️  WARNING: Connected to 'test' database! Check MONGODB_URI in .env.local");
+          console.warn("   Connection string should be: mongodb+srv://.../auen?retryWrites=true&w=majority");
+        }
       }
       return mongoose;
     });

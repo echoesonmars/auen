@@ -55,6 +55,7 @@ export default function ChatPage() {
     if (selectedChat) {
       loadMessages(selectedChat);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
 
   const loadChats = async () => {

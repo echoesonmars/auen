@@ -36,7 +36,7 @@ mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=tr
 
 ### Пример правильного connection string:
 ```
-MONGODB_URI=mongodb+srv://admin:password123@cluster0.xxxxx.mongodb.net/auen?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://username:password@cluster0.example.mongodb.net/auen?retryWrites=true&w=majority
 ```
 
 ## Шаг 3: Перезапустите сервер

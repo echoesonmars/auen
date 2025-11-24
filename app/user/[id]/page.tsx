@@ -37,6 +37,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadUserProfile = async () => {
