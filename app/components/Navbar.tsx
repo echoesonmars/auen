@@ -8,7 +8,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
-  const [language, setLanguage] = useState<"ru" | "kz">("ru");
+  const [language, setLanguage] = useState<"ru" | "kz" | "en">("ru");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { isAuthenticated } = useAuth();
@@ -32,12 +32,18 @@ export default function Navbar() {
   }, []);
 
   const toggleLanguage = () => {
-    setLanguage(language === "ru" ? "kz" : "ru");
+    if (language === "ru") {
+      setLanguage("kz");
+    } else if (language === "kz") {
+      setLanguage("en");
+    } else {
+      setLanguage("ru");
+    }
   };
 
   return (
     <nav
-      className={`w-full bg-white border-b border-color-light sticky top-0 z-50 transition-all duration-300 ${
+      className={`w-full bg-white border-b border-color-light sticky top-0 z-[100] transition-all duration-300 ${
         isScrolled
           ? "shadow-[0_10px_40px_rgba(63,114,175,0.3)]"
           : "shadow-none"
@@ -70,6 +76,10 @@ export default function Navbar() {
               <span className="text-color-light">|</span>
               <span className={language === "kz" ? "font-semibold" : "opacity-50"}>
                 KZ
+              </span>
+              <span className="text-color-light">|</span>
+              <span className={language === "en" ? "font-semibold" : "opacity-50"}>
+                EN
               </span>
             </button>
 
@@ -209,6 +219,10 @@ export default function Navbar() {
                   <span className="text-color-light">|</span>
                   <span className={language === "kz" ? "font-semibold" : "opacity-50"}>
                     KZ
+                  </span>
+                  <span className="text-color-light">|</span>
+                  <span className={language === "en" ? "font-semibold" : "opacity-50"}>
+                    EN
                   </span>
                 </motion.button>
 

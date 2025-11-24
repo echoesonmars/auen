@@ -322,6 +322,21 @@ export default function RegisterPage() {
 
                 <button
                   type="button"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/auth/google?action=register");
+                      const result = await response.json();
+                      
+                      if (result.success && result.url) {
+                        window.location.href = result.url;
+                      } else {
+                        alert(result.message || "Ошибка при подключении к Google");
+                      }
+                    } catch (error) {
+                      console.error("Google OAuth error:", error);
+                      alert("Ошибка при подключении к Google");
+                    }
+                  }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-color-light hover:bg-color-lightest transition-all duration-200 text-sm font-medium text-color-dark"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

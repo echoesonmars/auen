@@ -3,6 +3,8 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Ad from "@/models/Ad";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
             name: user.name,
             email: user.email,
             phone: user.phone,
+            avatar: user.avatar,
             createdAt: user.createdAt,
           },
           ads: ads.map((ad) => ({

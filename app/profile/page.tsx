@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 interface UserInfo {
   id: string;
   name: string;
   email: string;
   phone: string;
+  avatar?: string;
 }
 
 interface Ad {
@@ -28,7 +30,9 @@ export default function ProfilePage() {
   const [myAds, setMyAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const router = useRouter();
+  const { logout } = useAuth();
 
   useEffect(() => {
     loadUserData();
@@ -46,11 +50,21 @@ export default function ProfilePage() {
       }
 
       const response = await fetch(`/api/user/me?userId=${userId}`);
+      
+      // Обработка ошибки авторизации
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+      
       const result = await response.json();
 
       if (result.success) {
         setUserInfo(result.data.user);
         setMyAds(result.data.ads);
+      } else if (result.message?.includes("авторизац") || response.status === 401) {
+        router.push("/login");
+        return;
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -86,15 +100,117 @@ export default function ProfilePage() {
               <BlurFade inView={true} delay={0.2} direction="up">
                 <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sm:p-8 mb-6 sm:mb-8">
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-color-light flex items-center justify-center text-5xl sm:text-6xl">
-                      👤
+                    {/* Avatar */}
+                    <div className="relative group">
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-color-light flex items-center justify-center text-5xl sm:text-6xl overflow-hidden border-4 border-white shadow-lg">
+                        {userInfo.avatar ? (
+                          <img
+                            src={userInfo.avatar}
+                            alt={userInfo.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Если изображение не загрузилось, показываем эмодзи
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = "👤";
+                              }
+                            }}
+                          />
+                        ) : (
+                          "👤"
+                        )}
+                      </div>
+                      {/* Upload button overlay */}
+                      <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full cursor-pointer transition-all">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            setIsUploadingAvatar(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append("avatar", file);
+                              formData.append("userId", userInfo.id);
+
+                              const response = await fetch("/api/user/avatar", {
+                                method: "POST",
+                                body: formData,
+                              });
+
+                              const result = await response.json();
+
+                              if (result.success && result.data.avatar) {
+                                setUserInfo({ ...userInfo, avatar: result.data.avatar });
+                                alert("Аватар успешно загружен");
+                              } else {
+                                alert(result.message || "Ошибка при загрузке аватара");
+                              }
+                            } catch (error) {
+                              console.error("Error uploading avatar:", error);
+                              alert("Ошибка при загрузке аватара");
+                            } finally {
+                              setIsUploadingAvatar(false);
+                              // Сбрасываем input, чтобы можно было загрузить тот же файл снова
+                              e.target.value = "";
+                            }
+                          }}
+                          disabled={isUploadingAvatar}
+                        />
+                        {isUploadingAvatar ? (
+                          <div className="text-white text-sm">Загрузка...</div>
+                        ) : (
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                          </svg>
+                        )}
+                      </label>
                     </div>
                     <div className="flex-1 text-center sm:text-left">
                       <h2 className="text-2xl sm:text-3xl font-bold text-color-dark mb-2">
                         {userInfo.name}
                       </h2>
                       <p className="text-color-medium mb-1">{userInfo.email}</p>
-                      <p className="text-color-medium mb-1">{userInfo.phone}</p>
+                      {userInfo.phone && (
+                        <p className="text-color-medium mb-1">{userInfo.phone}</p>
+                      )}
+                      <button
+                        onClick={logout}
+                        className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                          <polyline points="16 17 21 12 16 7"></polyline>
+                          <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Выйти из аккаунта
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -169,13 +285,25 @@ export default function ProfilePage() {
                         body: JSON.stringify(updateData),
                       });
 
+                      // Обработка ошибки авторизации
+                      if (response.status === 401) {
+                        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+                        router.push("/login");
+                        return;
+                      }
+
                       const result = await response.json();
 
                       if (result.success) {
                         setUserInfo(result.data);
                         alert("Профиль успешно обновлен");
                       } else {
-                        alert("Ошибка: " + (result.message || "Неизвестная ошибка"));
+                        if (result.message?.includes("авторизац")) {
+                          alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+                          router.push("/login");
+                        } else {
+                          alert("Ошибка: " + (result.message || "Неизвестная ошибка"));
+                        }
                       }
                     } catch (error) {
                       console.error("Error updating profile:", error);
@@ -330,8 +458,28 @@ export default function ProfilePage() {
                       <div className="w-11 h-6 bg-color-light peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-color-medium rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-color-medium"></div>
                     </label>
                   </div>
-                  <div className="pt-4 border-t border-color-light">
-                    <button className="px-6 py-3 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-all duration-200">
+                  <div className="pt-4 border-t border-color-light space-y-3">
+                    <button
+                      onClick={logout}
+                      className="w-full sm:w-auto px-6 py-3 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      Выйти из аккаунта
+                    </button>
+                    <button className="w-full sm:w-auto px-6 py-3 rounded-lg bg-gray-500 text-white font-semibold hover:bg-gray-600 transition-all duration-200">
                       Удалить аккаунт
                     </button>
                   </div>

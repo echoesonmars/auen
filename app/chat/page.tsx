@@ -76,6 +76,14 @@ export default function ChatPage() {
       if (userId) {
         try {
           const response = await fetch(`/api/chats?userId=${userId}`);
+          
+          // Обработка ошибки авторизации
+          if (response.status === 401) {
+            // Показываем только чат с AI при ошибке авторизации
+            setChats([auenAIChat]);
+            return;
+          }
+          
           const result = await response.json();
 
           if (result.success) {
@@ -84,7 +92,11 @@ export default function ChatPage() {
             setChats(allChats);
           } else {
             // Если API вернул ошибку, показываем только чат с AI
-            setChats([auenAIChat]);
+            if (result.message?.includes("авторизац")) {
+              setChats([auenAIChat]);
+            } else {
+              setChats([auenAIChat]);
+            }
           }
         } catch (error) {
           console.error("Error loading chats:", error);
@@ -148,10 +160,27 @@ export default function ChatPage() {
 
       const userId = localStorage.getItem("userId") || "";
       const response = await fetch(`/api/chats/${chatId}/messages?userId=${userId}`);
+      
+      // Обработка ошибки авторизации
+      if (response.status === 401) {
+        // Если ошибка авторизации и это не AI чат, переключаемся на AI чат
+        if (chatId !== "auen-ai") {
+          setSelectedChat("auen-ai");
+          loadMessages("auen-ai");
+        }
+        return;
+      }
+      
       const result = await response.json();
 
       if (result.success) {
         setMessages(result.data);
+      } else if (result.message?.includes("авторизац")) {
+        // Если ошибка авторизации и это не AI чат, переключаемся на AI чат
+        if (chatId !== "auen-ai") {
+          setSelectedChat("auen-ai");
+          loadMessages("auen-ai");
+        }
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -241,10 +270,27 @@ export default function ChatPage() {
       // Обычная логика для обычных чатов
       // Получаем ID другого участника из API
       const receiverResponse = await fetch(`/api/chats/${selectedChat}/receiver?userId=${userId}`);
+      
+      // Обработка ошибки авторизации
+      if (receiverResponse.status === 401) {
+        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        // Переключаемся на AI чат при ошибке авторизации
+        setSelectedChat("auen-ai");
+        loadMessages("auen-ai");
+        setSending(false);
+        return;
+      }
+      
       const receiverResult = await receiverResponse.json();
       
       if (!receiverResult.success || !receiverResult.data?.receiverId) {
-        alert("Не удалось определить получателя");
+        if (receiverResult.message?.includes("авторизац")) {
+          alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+          setSelectedChat("auen-ai");
+          loadMessages("auen-ai");
+        } else {
+          alert("Не удалось определить получателя");
+        }
         setSending(false);
         return;
       }
@@ -261,7 +307,24 @@ export default function ChatPage() {
         }),
       });
 
+      // Обработка ошибки авторизации
+      if (response.status === 401) {
+        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        setSelectedChat("auen-ai");
+        loadMessages("auen-ai");
+        setSending(false);
+        return;
+      }
+
       const result = await response.json();
+      
+      if (result.message?.includes("авторизац")) {
+        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        setSelectedChat("auen-ai");
+        loadMessages("auen-ai");
+        setSending(false);
+        return;
+      }
 
       if (result.success) {
         setMessages([...messages, result.data]);

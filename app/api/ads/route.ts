@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
         price: validation.data.price,
         location: validation.data.location,
         userId: userIdObjectId,
-        images: validation.data.images?.length || 0 
+        images: validation.data.images?.length || 0,
+        imagesArray: validation.data.images || []
       });
       
       ad = await Ad.create({
@@ -95,6 +96,8 @@ export async function POST(request: NextRequest) {
       });
       
       console.log("Ad created successfully:", ad._id);
+      console.log("Ad images saved in DB:", ad.images);
+      console.log("Number of images:", ad.images?.length || 0);
     } catch (createError: unknown) {
       const error = createError as Error & { name?: string; code?: string; errors?: Record<string, { message: string }> };
       console.error("Ad creation error:", error);
@@ -202,6 +205,7 @@ export async function GET(request: NextRequest) {
 
     const ads = await Ad.find(query)
       .populate("userId", "name email phone")
+      .select("title category description price location images views userId createdAt status")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

@@ -28,8 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    const userId = localStorage.getItem("userId");
     localStorage.removeItem("auth_token");
     localStorage.removeItem("userId");
+    // Очищаем данные чата с AI для текущего пользователя
+    if (userId) {
+      localStorage.removeItem(`auen-ai-messages-${userId}`);
+    }
     setIsAuthenticated(false);
     router.push("/");
   };

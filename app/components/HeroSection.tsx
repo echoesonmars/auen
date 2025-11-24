@@ -132,7 +132,7 @@ export default function HeroSection() {
   }, [featuredCards.length]);
 
   return (
-    <div ref={heroRef} className="h-screen bg-color-lightest relative overflow-hidden">
+    <div ref={heroRef} className="min-h-screen bg-color-lightest relative flex flex-col">
       {/* Decorative background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 sm:w-48 sm:h-48 md:w-72 md:h-72 bg-color-light rounded-full opacity-20 blur-3xl"></div>
@@ -140,13 +140,13 @@ export default function HeroSection() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center h-full py-4 sm:py-6 md:py-8 lg:py-4">
-        <div className="w-full max-w-5xl mx-auto px-5 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10">
+      <section className="relative flex flex-col items-center justify-center flex-1 py-4 sm:py-6 md:py-8 lg:min-h-[calc(100vh-4rem)] lg:justify-center lg:items-center">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10 pb-8 sm:pb-12">
           {/* Content split into two parts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch">
             {/* Left side - Main content */}
             <div className="space-y-4 sm:space-y-3 md:space-y-6 text-left order-1 flex flex-col justify-center">
-              <h1 className="text-[4.3rem] sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-color-dark leading-[1.1] tracking-tight">
+              <h1 className="text-[4.3rem] sm:text-8xl md:text-[7rem] lg:text-6xl xl:text-7xl font-bold text-color-dark leading-[1.1] tracking-tight">
                 <TextAnimate
                   as="span"
                   animation="slideUp" by="character"
@@ -157,7 +157,7 @@ export default function HeroSection() {
                   Арендуй
                 </TextAnimate>
                 <span className="block min-h-[1.1em] sm:min-h-[1.2em]">
-                  <span className="mt-3 inline-block text-color-medium font-bold font-kyiv text-[4.3rem] sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
+                  <span className="mt-3 inline-block text-color-medium font-bold font-kyiv text-[4.3rem] sm:text-8xl md:text-[7rem] lg:text-6xl xl:text-7xl">
                     {displayedText}
                     {showCursor && <span className="animate-pulse">|</span>}
                   </span>
@@ -275,7 +275,7 @@ export default function HeroSection() {
                       </svg>
                       <input
                         type="text"
-                        placeholder="что ищете"
+                        placeholder="Что ищете?"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-8 sm:pl-10 pr-2 sm:pr-4 py-1.5 sm:py-2.5 text-xs sm:text-sm md:text-base rounded-lg sm:rounded-xl border-0 bg-transparent text-color-dark placeholder:text-color-medium focus:outline-none focus:ring-0"
@@ -365,6 +365,78 @@ export default function HeroSection() {
                 </div>
               </div>
               </form>
+            </div>
+          </BlurFade>
+
+          {/* Quick Action Buttons */}
+          <BlurFade inView={true} delay={0.4} direction="up">
+            <div className="mt-6 sm:mt-8">
+              <div className="flex flex-nowrap gap-2 sm:gap-3">
+                <button
+                  onClick={() => router.push("/locations")}
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg sm:rounded-xl border border-color-light hover:border-color-medium hover:shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium text-color-dark hover:scale-[1.02] whitespace-nowrap"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    className="sm:w-5 sm:h-5 flex-shrink-0 text-color-medium"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span className="hidden sm:inline">Открыть список мест</span>
+                  <span className="sm:hidden">Места</span>
+                </button>
+
+                <button
+                  onClick={() => router.push("/search?nearby=true")}
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg sm:rounded-xl border border-color-light hover:border-color-medium hover:shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium text-color-dark hover:scale-[1.02] whitespace-nowrap"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    className="sm:w-5 sm:h-5 flex-shrink-0 text-color-medium"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v6l4 2"></path>
+                  </svg>
+                  <span className="hidden sm:inline">Найти ближайшую студию</span>
+                  <span className="sm:hidden">Студия</span>
+                </button>
+
+                <button
+                  onClick={() => router.push("/blog")}
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg sm:rounded-xl border border-color-light hover:border-color-medium hover:shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium text-color-dark hover:scale-[1.02] whitespace-nowrap"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    className="sm:w-5 sm:h-5 flex-shrink-0 text-color-medium"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                  <span>Блог</span>
+                </button>
+              </div>
             </div>
           </BlurFade>
 

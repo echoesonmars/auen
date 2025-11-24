@@ -184,12 +184,32 @@ export default function AdsPage() {
                   direction="up"
                 >
                   <Link
-                    href={`/ad/${ad._id}`}
-                    className="bg-white rounded-xl shadow-lg border border-color-light p-6 hover:shadow-xl transition-all duration-200 flex flex-col h-full group"
+                    href={`/ads/${ad._id}`}
+                    className="bg-white rounded-xl shadow-lg border border-color-light p-6 hover:shadow-xl transition-all duration-200 flex flex-col h-full group overflow-hidden"
                   >
                     <div className="flex-1">
-                      <div className="text-4xl sm:text-5xl mb-4 flex items-center justify-center h-24 bg-color-lightest rounded-lg group-hover:bg-color-light transition-colors">
-                        {getCategoryIcon(ad.category)}
+                      <div className="aspect-video mb-4 flex items-center justify-center bg-color-lightest rounded-lg group-hover:bg-color-light transition-colors overflow-hidden">
+                        {ad.images && ad.images.length > 0 && ad.images[0] ? (
+                          <img
+                            src={ad.images[0]}
+                            alt={ad.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Если изображение не загрузилось, показываем эмодзи
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const icon = document.createElement("div");
+                                icon.className = "text-4xl sm:text-5xl";
+                                icon.textContent = getCategoryIcon(ad.category);
+                                parent.appendChild(icon);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="text-4xl sm:text-5xl">{getCategoryIcon(ad.category)}</div>
+                        )}
                       </div>
                       <h3 className="text-lg sm:text-xl font-bold text-color-dark mb-2 line-clamp-2 group-hover:text-color-medium transition-colors">
                         {ad.title}

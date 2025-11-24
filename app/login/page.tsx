@@ -1,23 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useAuth } from "@/app/contexts/AuthContext";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false,
   });
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [redirectUri, setRedirectUri] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      if (error === "oauth_failed" || error.includes("redirect_uri")) {
+        setOauthError("redirect_uri_mismatch");
+        // Получаем текущий redirect URI
+        fetch("/api/auth/google/config")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              setRedirectUri(data.config.redirectUri);
+            }
+          });
+      } else {
+        setOauthError(error);
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -25,28 +51,54 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        alert(result.message || "Ошибка входа");
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error("JSON parse error:", jsonError);
+        setErrors({ general: "Ошибка обработки ответа сервера. Попробуйте снова." });
+        setIsLoading(false);
         return;
       }
 
-      // Сохраняем данные пользователя
-      localStorage.setItem("userId", result.data.id);
-      localStorage.setItem("userName", result.data.name);
-      
-      // Устанавливаем авторизацию
-      login(result.data.id);
-      
-      // Перенаправляем на главную страницу
-      router.push("/");
+      // Обработка ошибок
+      if (!result.success) {
+        // Если есть ошибки валидации (email/password)
+        if (result.errors) {
+          setErrors(result.errors);
+        } else {
+          // Общая ошибка
+          setErrors({ general: result.message || "Ошибка входа. Проверьте email и пароль." });
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Успешный вход
+      if (result.data && result.data.id) {
+        // Сохраняем данные пользователя
+        localStorage.setItem("userId", result.data.id);
+        localStorage.setItem("userName", result.data.name || "");
+        
+        // Устанавливаем авторизацию
+        login(result.data.id);
+        
+        // Перенаправляем на главную страницу
+        router.push("/");
+      } else {
+        setErrors({ general: "Ошибка: данные пользователя не получены" });
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error("Login error:", error);
-      alert("Ошибка при входе");
+      setErrors({ general: "Ошибка подключения к серверу. Проверьте интернет-соединение." });
+      setIsLoading(false);
     }
   };
 
@@ -76,6 +128,14 @@ export default function LoginPage() {
               Войдите в свой аккаунт, чтобы продолжить
             </TextAnimate>
 
+            {errors.general && (
+              <BlurFade inView={true} delay={0.25} direction="up">
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{errors.general}</p>
+                </div>
+              </BlurFade>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               <BlurFade inView={true} delay={0.3} direction="up">
                 <div>
@@ -86,10 +146,20 @@ export default function LoginPage() {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      if (errors.email) setErrors({ ...errors, email: "" });
+                    }}
                     placeholder="your@email.com"
-                    className="w-full px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium"
+                    className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium ${
+                      errors.email 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-color-light focus:border-color-medium"
+                    }`}
                   />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  )}
                 </div>
               </BlurFade>
 
@@ -102,10 +172,20 @@ export default function LoginPage() {
                     type="password"
                     required
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (errors.password) setErrors({ ...errors, password: "" });
+                    }}
                     placeholder="Введите пароль"
-                    className="w-full px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium"
+                    className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium ${
+                      errors.password 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-color-light focus:border-color-medium"
+                    }`}
                   />
+                  {errors.password && (
+                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  )}
                 </div>
               </BlurFade>
 
@@ -134,12 +214,50 @@ export default function LoginPage() {
               <BlurFade inView={true} delay={0.6} direction="up">
                 <button
                   type="submit"
-                  className="w-full bg-color-medium text-white px-6 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 text-base"
+                  disabled={isLoading}
+                  className="w-full bg-color-medium text-white px-6 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Войти
+                  {isLoading ? "Вход..." : "Войти"}
                 </button>
               </BlurFade>
             </form>
+
+            {oauthError && (
+              <BlurFade inView={true} delay={0.65} direction="up">
+                <div className={`p-4 rounded-lg mb-4 ${
+                  oauthError === "redirect_uri_mismatch" 
+                    ? "bg-yellow-50 border border-yellow-200" 
+                    : "bg-red-50 border border-red-200"
+                }`}>
+                  {oauthError === "redirect_uri_mismatch" ? (
+                    <div className="text-sm">
+                      <p className="font-semibold text-yellow-800 mb-2">
+                        ⚠️ Необходимо настроить Redirect URI в Google Cloud Console
+                      </p>
+                      <p className="text-yellow-700 mb-2">
+                        Добавьте следующий URL в раздел &quot;Authorized redirect URIs&quot;:
+                      </p>
+                      {redirectUri && (
+                        <div className="bg-white p-2 rounded border border-yellow-300 mb-2">
+                          <code className="text-xs break-all text-color-dark">{redirectUri}</code>
+                        </div>
+                      )}
+                      <ol className="text-yellow-700 text-xs space-y-1 ml-4 list-decimal">
+                        <li>Перейдите в <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                        <li>Выберите ваш OAuth 2.0 Client ID</li>
+                        <li>В разделе &quot;Authorized redirect URIs&quot; нажмите &quot;ADD URI&quot;</li>
+                        <li>Вставьте URL выше и сохраните</li>
+                        <li>Подождите 1-2 минуты и попробуйте снова</li>
+                      </ol>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-800">
+                      Ошибка авторизации: {oauthError}
+                    </p>
+                  )}
+                </div>
+              </BlurFade>
+            )}
 
             <BlurFade inView={true} delay={0.7} direction="up">
               <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-color-light">
@@ -164,6 +282,21 @@ export default function LoginPage() {
 
                 <button
                   type="button"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/auth/google?action=login");
+                      const result = await response.json();
+                      
+                      if (result.success && result.url) {
+                        window.location.href = result.url;
+                      } else {
+                        alert(result.message || "Ошибка при подключении к Google");
+                      }
+                    } catch (error) {
+                      console.error("Google OAuth error:", error);
+                      alert("Ошибка при подключении к Google");
+                    }
+                  }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-color-light hover:bg-color-lightest transition-all duration-200 text-sm font-medium text-color-dark"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -180,5 +313,20 @@ export default function LoginPage() {
         </BlurFade>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-color-lightest flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-medium mx-auto mb-4"></div>
+          <p className="text-color-medium">Загрузка...</p>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

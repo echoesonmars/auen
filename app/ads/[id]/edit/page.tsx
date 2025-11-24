@@ -2,11 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { use } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
-import RichTextEditor from "../components/RichTextEditor";
+import RichTextEditor from "@/app/components/RichTextEditor";
 
-export default function CreatePage() {
+export default function EditAdPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+  // Обрабатываем params как Promise или обычный объект
+  const resolvedParams = params instanceof Promise ? use(params) : params;
+  const id = resolvedParams.id;
+
   const router = useRouter();
 
   // Проверка авторизации при загрузке страницы
@@ -18,16 +23,17 @@ export default function CreatePage() {
       router.push("/login");
     }
   }, [router]);
+
   const [formData, setFormData] = useState({
     title: "",
     category: "",
     description: "",
-    price: "",
     priceAmount: "",
     pricePeriod: "час",
     location: "",
     images: [] as File[],
-    imagePreviews: [] as string[],
+    imagePreviews: [] as string[], // Новые загруженные файлы
+    existingImages: [] as string[], // Существующие изображения из БД
   });
 
   const categories = [
@@ -40,7 +46,61 @@ export default function CreatePage() {
   ];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Загрузка данных объявления
+  useEffect(() => {
+    if (id) {
+      loadAd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const loadAd = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/ads/${id}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const ad = result.data;
+        const userId = localStorage.getItem("userId");
+
+        // Проверка, что пользователь является владельцем
+        if (ad.userId?._id?.toString() !== userId && ad.userId?.toString() !== userId) {
+          alert("У вас нет прав на редактирование этого объявления");
+          router.push(`/ads/${id}`);
+          return;
+        }
+
+        // Парсим цену: "5000 ₸/час" -> amount: "5000", period: "час"
+        const priceMatch = ad.price?.match(/^(\d+)\s*₸\s*\/\s*(час|день|неделя|месяц)$/i);
+        const priceAmount = priceMatch ? priceMatch[1] : "";
+        const pricePeriod = priceMatch ? priceMatch[2] : "час";
+
+        setFormData({
+          title: ad.title || "",
+          category: ad.category || "",
+          description: ad.description || "",
+          priceAmount,
+          pricePeriod,
+          location: ad.location || "",
+          images: [],
+          imagePreviews: [],
+          existingImages: ad.images || [],
+        });
+      } else {
+        setErrors({ general: result.message || "Объявление не найдено" });
+        router.push("/profile");
+      }
+    } catch (error) {
+      console.error("Error loading ad:", error);
+      setErrors({ general: "Ошибка при загрузке объявления" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +161,8 @@ export default function CreatePage() {
       // Формируем цену в нужном формате
       const price = `${formData.priceAmount} ₸/${formData.pricePeriod}`;
 
-      // Загружаем изображения, если они есть
-      let imageUrls: string[] = [];
+      // Загружаем новые изображения, если они есть
+      let newImageUrls: string[] = [];
       if (formData.images.length > 0) {
         try {
           const imageFormData = new FormData();
@@ -118,7 +178,7 @@ export default function CreatePage() {
           const imageResult = await imageResponse.json();
 
           if (imageResult.success && imageResult.data.images) {
-            imageUrls = imageResult.data.images;
+            newImageUrls = imageResult.data.images;
           } else {
             setErrors({ general: imageResult.message || "Ошибка при загрузке изображений" });
             setIsSubmitting(false);
@@ -132,38 +192,30 @@ export default function CreatePage() {
         }
       }
 
+      // Объединяем существующие и новые изображения
+      const allImages = [...formData.existingImages, ...newImageUrls].slice(0, 10);
+
       // Подготовка данных для отправки
       const formDataToSend = {
         title: formData.title.trim(),
         category: formData.category,
-        description: formData.description, // HTML описание отправляем как есть
+        description: formData.description,
         price: price,
         location: formData.location.trim(),
-        images: imageUrls,
+        images: allImages,
         userId,
       };
 
-      console.log("Sending ad data:", formDataToSend);
+      console.log("Sending update data:", formDataToSend);
 
-      const response = await fetch("/api/ads", {
-        method: "POST",
+      const response = await fetch(`/api/ads/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formDataToSend),
       });
 
-      // Проверяем, что ответ является JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON response:", text.substring(0, 500));
-        setErrors({ general: `Ошибка сервера (${response.status}). Проверьте консоль для деталей.` });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Обработка ошибки авторизации
       if (response.status === 401) {
         setErrors({ general: "Сессия истекла. Пожалуйста, войдите в систему снова." });
         setTimeout(() => {
@@ -173,47 +225,25 @@ export default function CreatePage() {
         return;
       }
 
-      let result;
-      try {
-        result = await response.json();
-        console.log("Response status:", response.status);
-        console.log("Response data:", result);
-      } catch (jsonError: unknown) {
-        console.error("JSON parse error:", jsonError);
-        const text = await response.text();
-        console.error("Response text:", text.substring(0, 500));
-        setErrors({ general: `Ошибка парсинга ответа сервера (${response.status}). Проверьте консоль для деталей.` });
-        setIsSubmitting(false);
-        return;
-      }
+      const result = await response.json();
 
       if (!result.success) {
-        // Проверка на ошибку авторизации в ответе
-        if (response.status === 401 || result.message?.includes("авторизац")) {
-          setErrors({ general: "Сессия истекла. Пожалуйста, войдите в систему снова." });
-          setTimeout(() => {
-            router.push("/login");
-          }, 2000);
-          setIsSubmitting(false);
-          return;
-        }
-        
         if (result.errors) {
           setErrors(result.errors);
         } else {
-          setErrors({ general: result.message || result.error || "Ошибка при создании объявления" });
+          setErrors({ general: result.message || result.error || "Ошибка при обновлении объявления" });
         }
         setIsSubmitting(false);
         return;
       }
 
-      // Успешно создано
-      alert("Объявление успешно создано!");
-      window.location.href = "/profile";
+      // Успешно обновлено
+      alert("Объявление успешно обновлено!");
+      router.push(`/ads/${id}`);
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("Error creating ad:", err);
-      setErrors({ general: err.message || "Ошибка при создании объявления. Проверьте подключение к интернету." });
+      console.error("Error updating ad:", err);
+      setErrors({ general: err.message || "Ошибка при обновлении объявления. Проверьте подключение к интернету." });
     } finally {
       setIsSubmitting(false);
     }
@@ -222,15 +252,11 @@ export default function CreatePage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      const totalFiles = formData.images.length + files.length;
+      const totalFiles = formData.images.length + formData.existingImages.length + files.length;
       const filesToAdd = totalFiles > 10 
-        ? files.slice(0, 10 - formData.images.length) 
+        ? files.slice(0, 10 - formData.images.length - formData.existingImages.length) 
         : files;
       
-      // Сохраняем существующие превью
-      const existingPreviews = [...formData.imagePreviews];
-      
-      // Создаем превью для новых файлов
       const newPreviews: string[] = [];
       let loadedCount = 0;
       
@@ -241,12 +267,11 @@ export default function CreatePage() {
             newPreviews[index] = event.target.result as string;
             loadedCount++;
             
-            // Когда все превью загружены, обновляем состояние
             if (loadedCount === filesToAdd.length) {
               setFormData({ 
                 ...formData, 
                 images: [...formData.images, ...filesToAdd], 
-                imagePreviews: [...existingPreviews, ...newPreviews] 
+                imagePreviews: [...formData.imagePreviews, ...newPreviews] 
               });
             }
           }
@@ -255,15 +280,36 @@ export default function CreatePage() {
       });
     }
     
-    // Сбрасываем input, чтобы можно было загрузить те же файлы снова
     e.target.value = "";
   };
 
-  const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    const newPreviews = formData.imagePreviews.filter((_, i) => i !== index);
-    setFormData({ ...formData, images: newImages, imagePreviews: newPreviews });
+  const handleRemoveImage = (index: number, isExisting: boolean) => {
+    if (isExisting) {
+      // Удаляем из существующих изображений
+      setFormData({
+        ...formData,
+        existingImages: formData.existingImages.filter((_, i) => i !== index),
+      });
+    } else {
+      // Удаляем из новых загруженных изображений
+      const newImages = formData.images.filter((_, i) => i !== index);
+      const newPreviews = formData.imagePreviews.filter((_, i) => i !== index);
+      setFormData({ ...formData, images: newImages, imagePreviews: newPreviews });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-color-lightest flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-color-dark mb-2">Загрузка...</div>
+          <div className="text-color-medium">Загружаем данные объявления</div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalImages = formData.existingImages.length + formData.imagePreviews.length;
 
   return (
     <div className="min-h-screen bg-color-lightest py-8 sm:py-12 md:py-20">
@@ -277,7 +323,7 @@ export default function CreatePage() {
             delay={0.1}
             className="text-4xl sm:text-5xl md:text-6xl font-bold text-color-dark mb-2"
           >
-            Создать объявление
+            Редактировать объявление
           </TextAnimate>
           <TextAnimate
             as="p"
@@ -287,7 +333,7 @@ export default function CreatePage() {
             delay={0.2}
             className="text-base sm:text-lg text-color-medium mb-8 sm:mb-12"
           >
-            Заполните форму, чтобы разместить ваше объявление
+            Внесите изменения в ваше объявление
           </TextAnimate>
         </BlurFade>
 
@@ -303,19 +349,19 @@ export default function CreatePage() {
                   <label className="block text-sm font-medium text-color-dark mb-2">
                     Название объявления *
                   </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.title}
-                      onChange={(e) => {
-                        setFormData({ ...formData, title: e.target.value });
-                        if (errors.title) setErrors({ ...errors, title: "" });
-                      }}
-                      placeholder="Например: Электрогитара Fender Stratocaster"
-                      className={`w-full px-4 py-3 rounded-lg border ${
-                        errors.title ? "border-red-500" : "border-color-light"
-                      } focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium`}
-                    />
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value });
+                      if (errors.title) setErrors({ ...errors, title: "" });
+                    }}
+                    placeholder="Например: Электрогитара Fender Stratocaster"
+                    className={`w-full px-4 py-3 rounded-lg border ${
+                      errors.title ? "border-red-500" : "border-color-light"
+                    } focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium`}
+                  />
                   {errors.title && (
                     <p className="text-red-500 text-sm mt-1">{errors.title}</p>
                   )}
@@ -431,22 +477,56 @@ export default function CreatePage() {
 
                 <div>
                   <label className="block text-sm font-medium text-color-dark mb-2">
-                    Фотографии {formData.images.length > 0 && `(${formData.images.length}/10)`}
+                    Фотографии {totalImages > 0 && `(${totalImages}/10)`}
                   </label>
                   
-                  {/* Превью загруженных фотографий */}
-                  {formData.imagePreviews.length > 0 && (
+                  {/* Существующие изображения */}
+                  {formData.existingImages.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-4">
-                      {formData.imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
+                      {formData.existingImages.map((preview, index) => (
+                        <div key={`existing-${index}`} className="relative group">
                           <img
                             src={preview}
-                            alt={`Preview ${index + 1}`}
+                            alt={`Existing ${index + 1}`}
                             className="w-full h-32 object-cover rounded-lg border border-color-light"
                           />
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={() => handleRemoveImage(index, true)}
+                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Новые загруженные изображения */}
+                  {formData.imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-4">
+                      {formData.imagePreviews.map((preview, index) => (
+                        <div key={`new-${index}`} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`New ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border border-color-light"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index, false)}
                             className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <svg
@@ -469,7 +549,7 @@ export default function CreatePage() {
                   )}
                   
                   {/* Кнопка загрузки */}
-                  {formData.images.length < 10 && (
+                  {totalImages < 10 && (
                     <div className="border-2 border-dashed border-color-light rounded-lg p-6 text-center hover:border-color-medium transition-colors">
                       <input
                         type="file"
@@ -478,7 +558,7 @@ export default function CreatePage() {
                         onChange={handleImageChange}
                         className="hidden"
                         id="image-upload"
-                        disabled={formData.images.length >= 10}
+                        disabled={totalImages >= 10}
                       />
                       <label
                         htmlFor="image-upload"
@@ -521,18 +601,19 @@ export default function CreatePage() {
 
           <BlurFade inView={true} delay={0.4} direction="up">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-color-medium text-white px-6 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? "Создание..." : "Опубликовать объявление"}
-                </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 bg-color-medium text-white px-6 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Сохранение..." : "Сохранить изменения"}
+              </button>
               <button
                 type="button"
+                onClick={() => router.push(`/ads/${id}`)}
                 className="px-6 py-3 rounded-lg font-medium border border-color-light text-color-dark hover:bg-color-lightest transition-all duration-200 text-base"
               >
-                Сохранить черновик
+                Отмена
               </button>
             </div>
           </BlurFade>

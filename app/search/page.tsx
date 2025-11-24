@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import Link from "next/link";
+import { useMetadata } from "@/app/hooks/useMetadata";
 
 interface Ad {
   _id: string;
@@ -19,7 +20,7 @@ interface Ad {
   createdAt: string;
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locationRef = useRef<HTMLDivElement>(null);
@@ -90,6 +91,19 @@ export default function SearchPage() {
     loadAds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedSubcategory, selectedLocation, searchQuery, sortBy]);
+
+  // Обновляем метаданные страницы
+  const pageTitle = searchQuery 
+    ? `Поиск: ${searchQuery} | Auen`
+    : selectedCategory
+    ? `Категория: ${selectedCategory} | Auen`
+    : "Поиск музыкального оборудования | Auen";
+    
+  const pageDescription = searchQuery
+    ? `Результаты поиска по запросу "${searchQuery}" на платформе Auen. Найдите нужное музыкальное оборудование для аренды в Казахстане.`
+    : "Найдите и арендуйте музыкальное оборудование, студии звукозаписи, инструменты и DJ-оборудование в Казахстане.";
+
+  useMetadata(pageTitle, pageDescription);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -427,8 +441,28 @@ export default function SearchPage() {
                       className="bg-white rounded-2xl border border-color-light overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block"
                       style={{ boxShadow: '0 4px 20px rgba(63, 114, 175, 0.1)' }}
                     >
-                      <div className="aspect-video bg-color-lightest flex items-center justify-center text-6xl">
-                        {getCategoryIcon(ad.category)}
+                      <div className="aspect-video bg-color-lightest flex items-center justify-center overflow-hidden relative">
+                        {ad.images && ad.images.length > 0 && ad.images[0] ? (
+                          <img
+                            src={ad.images[0]}
+                            alt={ad.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Если изображение не загрузилось, показываем эмодзи
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const icon = document.createElement("div");
+                                icon.className = "text-6xl";
+                                icon.textContent = getCategoryIcon(ad.category);
+                                parent.appendChild(icon);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="text-6xl">{getCategoryIcon(ad.category)}</div>
+                        )}
                       </div>
                       <div className="p-4 sm:p-6">
                         <h3 className="text-lg font-bold text-color-dark mb-2 line-clamp-2">
@@ -437,7 +471,7 @@ export default function SearchPage() {
                         <p className="text-sm text-color-medium mb-3">{ad.location}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-xl font-bold text-color-medium">{ad.price}</span>
-                          <span className="text-xs text-color-medium">👁 {ad.views}</span>
+                          <span className="text-xs text-color-medium">👁 {ad.views || 0}</span>
                         </div>
                       </div>
                     </Link>
@@ -449,6 +483,21 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-color-lightest flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-medium mx-auto mb-4"></div>
+          <p className="text-color-medium">Загрузка...</p>
+        </div>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
 

@@ -4,8 +4,10 @@ import bcrypt from "bcryptjs";
 export interface IUser extends Document {
   name: string;
   email: string;
-  phone: string;
-  password: string;
+  phone?: string;
+  password?: string;
+  googleId?: string;
+  avatar?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -42,19 +44,26 @@ const UserSchema: Schema = new Schema(
     },
     phone: {
       type: String,
-      required: [true, "Телефон обязателен"],
       validate: {
         validator: function (v: string) {
-          return /^\+?[1-9]\d{1,14}$/.test(v);
+          return !v || /^\+?[1-9]\d{1,14}$/.test(v);
         },
         message: "Некорректный номер телефона",
       },
     },
     password: {
       type: String,
-      required: [true, "Пароль обязателен"],
       minlength: [8, "Пароль должен содержать минимум 8 символов"],
       select: false, // Не возвращать пароль по умолчанию
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Разрешает множественные null значения
+    },
+    avatar: {
+      type: String,
+      default: null,
     },
   },
   {
@@ -65,8 +74,8 @@ const UserSchema: Schema = new Schema(
 // Хеширование пароля перед сохранением
 // В Mongoose 9.x можно использовать async функции без next callback
 UserSchema.pre("save", async function () {
-  // Проверяем, был ли изменен пароль
-  if (!this.isModified("password")) {
+  // Проверяем, был ли изменен пароль и существует ли он
+  if (!this.isModified("password") || !this.password) {
     return;
   }
 
@@ -82,11 +91,16 @@ UserSchema.pre("save", async function () {
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  // Если пароля нет (например, для Google OAuth пользователей), возвращаем false
+  if (!this.password) {
+    return false;
+  }
   return bcrypt.compare(candidatePassword, this.password);
 };
 
 // Индексы для оптимизации запросов
 UserSchema.index({ email: 1 });
+UserSchema.index({ googleId: 1 });
 UserSchema.index({ createdAt: -1 });
 
 const User: Model<IUser> =

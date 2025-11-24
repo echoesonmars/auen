@@ -61,6 +61,7 @@ export async function PUT(request: NextRequest) {
           name: user.name,
           email: user.email,
           phone: user.phone,
+          avatar: user.avatar,
         },
         message: "Профиль успешно обновлен",
       },
