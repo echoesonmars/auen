@@ -11,8 +11,31 @@ export default function Navbar() {
   const [language, setLanguage] = useState<"ru" | "kz" | "en">("ru");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // Проверяем права администратора
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (isAuthenticated) {
+        try {
+          const userId = localStorage.getItem("userId");
+          if (userId) {
+            const response = await fetch(`/api/admin/check?userId=${userId}`);
+            const result = await response.json();
+            if (result.success && result.data.isAdmin) {
+              setIsAdmin(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+        }
+      }
+    };
+
+    checkAdmin();
+  }, [isAuthenticated]);
 
   const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isAuthenticated) {
@@ -126,6 +149,29 @@ export default function Navbar() {
               </svg>
               <span className="hidden lg:inline">Профиль</span>
             </Link>
+
+            {/* Admin panel */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"></path>
+                  <path d="M9 12l2 2 4-4"></path>
+                </svg>
+                <span className="hidden lg:inline">Админ</span>
+              </Link>
+            )}
 
             {/* Create ad button */}
             <Link
@@ -282,11 +328,40 @@ export default function Navbar() {
                   </Link>
                 </motion.div>
 
+                {/* Admin panel */}
+                {isAdmin && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25, duration: 0.2 }}
+                  >
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium w-full"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"></path>
+                        <path d="M9 12l2 2 4-4"></path>
+                      </svg>
+                      Админ панель
+                    </Link>
+                  </motion.div>
+                )}
+
                 {/* Create ad button */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25, duration: 0.2 }}
+                  transition={{ delay: 0.3, duration: 0.2 }}
                 >
                   <Link
                     href="/create"

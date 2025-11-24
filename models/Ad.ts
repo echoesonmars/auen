@@ -9,7 +9,7 @@ export interface IAd extends Document {
   images: string[];
   userId: mongoose.Types.ObjectId;
   views: number;
-  status: "active" | "inactive" | "sold";
+  status: "active" | "inactive" | "sold" | "pending" | "rejected";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,10 +86,10 @@ const AdSchema: Schema = new Schema(
     status: {
       type: String,
       enum: {
-        values: ["active", "inactive", "sold"],
+        values: ["active", "inactive", "sold", "pending", "rejected"],
         message: "Некорректный статус",
       },
-      default: "active",
+      default: "pending", // Новые объявления требуют модерации
       index: true,
     },
   },

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "create-collections": "ts-node scripts/create-collections.ts",
-    "check-collections": "ts-node scripts/check-collections.ts"
+    "check-collections": "ts-node scripts/check-collections.ts",
+    "set-admin": "ts-node scripts/set-admin.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

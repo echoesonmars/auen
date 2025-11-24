@@ -110,23 +110,38 @@ export default function CreatePage() {
             imageFormData.append("images", file);
           });
 
+          console.log("Uploading images...", formData.images.length, "files");
+          
           const imageResponse = await fetch("/api/ads/images", {
             method: "POST",
             body: imageFormData,
           });
 
-          const imageResult = await imageResponse.json();
+          if (!imageResponse.ok) {
+            const errorText = await imageResponse.text();
+            console.error("Image upload failed:", imageResponse.status, errorText);
+            setErrors({ general: `Ошибка загрузки изображений (${imageResponse.status}). Проверьте консоль для деталей.` });
+            setIsSubmitting(false);
+            return;
+          }
 
-          if (imageResult.success && imageResult.data.images) {
+          const imageResult = await imageResponse.json();
+          console.log("Image upload result:", imageResult);
+
+          if (imageResult.success && imageResult.data && imageResult.data.images) {
             imageUrls = imageResult.data.images;
+            console.log("Images uploaded successfully:", imageUrls.length, "images");
           } else {
-            setErrors({ general: imageResult.message || "Ошибка при загрузке изображений" });
+            const errorMessage = imageResult.message || "Ошибка при загрузке изображений";
+            console.error("Image upload failed:", errorMessage);
+            setErrors({ general: errorMessage });
             setIsSubmitting(false);
             return;
           }
         } catch (imageError) {
           console.error("Error uploading images:", imageError);
-          setErrors({ general: "Ошибка при загрузке изображений" });
+          const errorMessage = imageError instanceof Error ? imageError.message : "Ошибка при загрузке изображений";
+          setErrors({ general: `Ошибка при загрузке изображений: ${errorMessage}` });
           setIsSubmitting(false);
           return;
         }
@@ -220,43 +235,78 @@ export default function CreatePage() {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+
+    try {
       const files = Array.from(e.target.files);
       const totalFiles = formData.images.length + files.length;
       const filesToAdd = totalFiles > 10 
         ? files.slice(0, 10 - formData.images.length) 
         : files;
       
-      // Сохраняем существующие превью
+      if (filesToAdd.length === 0) {
+        alert("Можно загрузить максимум 10 фотографий");
+        e.target.value = "";
+        return;
+      }
+
+      // Проверяем типы файлов
+      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      const invalidFiles = filesToAdd.filter(file => !validTypes.includes(file.type));
+      
+      if (invalidFiles.length > 0) {
+        alert(`Некоторые файлы имеют неподдерживаемый формат. Поддерживаются: JPEG, PNG, WebP`);
+      }
+
+      const validFiles = filesToAdd.filter(file => validTypes.includes(file.type));
+      
+      if (validFiles.length === 0) {
+        e.target.value = "";
+        return;
+      }
+
+      // Сохраняем существующие превью и файлы
       const existingPreviews = [...formData.imagePreviews];
+      const existingFiles = [...formData.images];
       
       // Создаем превью для новых файлов
-      const newPreviews: string[] = [];
-      let loadedCount = 0;
-      
-      filesToAdd.forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            newPreviews[index] = event.target.result as string;
-            loadedCount++;
-            
-            // Когда все превью загружены, обновляем состояние
-            if (loadedCount === filesToAdd.length) {
-              setFormData({ 
-                ...formData, 
-                images: [...formData.images, ...filesToAdd], 
-                imagePreviews: [...existingPreviews, ...newPreviews] 
-              });
+      const previewPromises = validFiles.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error(`Ошибка чтения файла: ${file.name}`));
+          reader.onload = (event) => {
+            if (event.target?.result) {
+              resolve(event.target.result as string);
+            } else {
+              reject(new Error(`Не удалось загрузить файл: ${file.name}`));
             }
-          }
-        };
-        reader.readAsDataURL(file);
+          };
+          reader.readAsDataURL(file);
+        });
       });
+
+      // Ждем загрузки всех превью
+      Promise.all(previewPromises)
+        .then((newPreviews) => {
+          setFormData({ 
+            ...formData, 
+            images: [...existingFiles, ...validFiles], 
+            imagePreviews: [...existingPreviews, ...newPreviews] 
+          });
+        })
+        .catch((error) => {
+          console.error("Error loading image previews:", error);
+          alert("Ошибка при загрузке превью изображений. Попробуйте снова.");
+        });
+    } catch (error) {
+      console.error("Error handling image change:", error);
+      alert("Ошибка при выборе файлов. Попробуйте снова.");
+    } finally {
+      // Сбрасываем input, чтобы можно было загрузить те же файлы снова
+      e.target.value = "";
     }
-    
-    // Сбрасываем input, чтобы можно было загрузить те же файлы снова
-    e.target.value = "";
   };
 
   const removeImage = (index: number) => {

@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
       phone: user.phone,
     };
 
-    return NextResponse.json(
+    // Создаем response с данными пользователя
+    const response = NextResponse.json(
       {
         success: true,
         data: userResponse,
@@ -113,6 +114,24 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+
+    // Устанавливаем cookies для middleware (опционально, для совместимости)
+    // Также устанавливаем httpOnly: false, чтобы клиент мог их читать
+    response.cookies.set("auth_token", "authenticated", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 дней
+    });
+
+    response.cookies.set("userId", user._id.toString(), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 дней
+    });
+
+    return response;
   } catch (error: unknown) {
     const err = error as Error;
     console.error("Login error:", err);

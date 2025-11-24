@@ -89,8 +89,9 @@ function LoginPageContent() {
         // Устанавливаем авторизацию
         login(result.data.id);
         
-        // Перенаправляем на главную страницу
-        router.push("/");
+        // Перенаправляем на запрошенную страницу или на главную
+        const redirect = searchParams.get("redirect");
+        router.push(redirect || "/");
       } else {
         setErrors({ general: "Ошибка: данные пользователя не получены" });
         setIsLoading(false);
