@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { Highlighter } from "@/components/ui/highlighter";
 import { BlurFade } from "@/components/ui/blur-fade";
 
 export default function HeroSection() {
+  const router = useRouter();
   const word = "МУЗЫКУ";
   const [displayedText, setDisplayedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState("Казахстан");
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const locationRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -129,7 +132,7 @@ export default function HeroSection() {
   }, [featuredCards.length]);
 
   return (
-    <div ref={heroRef} className="min-h-screen bg-color-lightest relative overflow-hidden pb-0">
+    <div ref={heroRef} className="h-screen bg-color-lightest relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 sm:w-48 sm:h-48 md:w-72 md:h-72 bg-color-light rounded-full opacity-20 blur-3xl"></div>
@@ -137,7 +140,7 @@ export default function HeroSection() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] py-8 sm:py-12 md:py-20">
+      <section className="relative flex flex-col items-center justify-center h-full py-4 sm:py-6 md:py-8 lg:py-4">
         <div className="w-full max-w-5xl mx-auto px-5 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10">
           {/* Content split into two parts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch">
@@ -207,9 +210,9 @@ export default function HeroSection() {
                         : "opacity-0 translate-x-full"
                     }`}
                   >
-                    <div className="bg-white rounded-2xl shadow-xl border border-color-light p-6 h-full flex flex-col justify-between hover:shadow-2xl transition-shadow">
+                    <div className="bg-white rounded-2xl border border-color-light p-6 h-full flex flex-col justify-between transition-all duration-300 hover:scale-[1.02]" style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}>
                       <div>
-                        <div className="text-5xl mb-4">{card.image}</div>
+                        <div className="text-5xl mb-4 flex-shrink-0 leading-none" style={{ minHeight: '3rem' }}>{card.image}</div>
                         <h3 className="text-xl font-bold text-color-dark mb-2">
                           {card.title}
                         </h3>
@@ -243,30 +246,41 @@ export default function HeroSection() {
           {/* Enhanced Search */}
           <BlurFade inView={true} delay={0.3} direction="up">
             <div className="mt-8 sm:mt-12 md:mt-16">
-              <div className="relative group">
-                <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-xl border border-color-light p-1 sm:p-1.5">
-                <div className="flex flex-row items-center gap-1.5 sm:gap-2">
-                  {/* Search input */}
-                  <div className="flex-1 relative min-w-0">
-                    <svg
-                      className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-color-medium"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const params = new URLSearchParams();
+                  if (searchQuery) params.set("q", searchQuery);
+                  if (selectedLocation && selectedLocation !== "Казахстан") params.set("location", selectedLocation);
+                  router.push(`/search?${params.toString()}`);
+                }}
+              >
+                <div className="relative group">
+                  <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-xl border border-color-light p-1 sm:p-1.5">
+                  <div className="flex flex-row items-center gap-1.5 sm:gap-2">
+                    {/* Search input */}
+                    <div className="flex-1 relative min-w-0">
+                      <svg
+                        className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-color-medium"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="что ищете"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-8 sm:pl-10 pr-2 sm:pr-4 py-1.5 sm:py-2.5 text-xs sm:text-sm md:text-base rounded-lg sm:rounded-xl border-0 bg-transparent text-color-dark placeholder:text-color-medium focus:outline-none focus:ring-0"
                       />
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="что ищете"
-                      className="w-full pl-8 sm:pl-10 pr-2 sm:pr-4 py-1.5 sm:py-2.5 text-xs sm:text-sm md:text-base rounded-lg sm:rounded-xl border-0 bg-transparent text-color-dark placeholder:text-color-medium focus:outline-none focus:ring-0"
-                    />
-                  </div>
+                    </div>
 
                   {/* Location selector - только иконка на маленьких экранах */}
                   <div className="relative flex-shrink-0" ref={locationRef}>
@@ -342,7 +356,7 @@ export default function HeroSection() {
 
                   {/* Search button */}
                   <button
-                    type="button"
+                    type="submit"
                     className="bg-color-medium text-white px-3 sm:px-5 md:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold hover:bg-color-dark hover:shadow-lg hover:scale-[1.02] transition-all duration-200 text-xs sm:text-sm md:text-base whitespace-nowrap flex-shrink-0"
                   >
                     Поиск
@@ -350,6 +364,7 @@ export default function HeroSection() {
                 </div>
                 </div>
               </div>
+              </form>
             </div>
           </BlurFade>
 
@@ -368,9 +383,9 @@ export default function HeroSection() {
                         : "opacity-0 translate-x-full"
                     }`}
                   >
-                    <div className="bg-white rounded-2xl shadow-xl border border-color-light p-6 h-full flex flex-col justify-between hover:shadow-2xl transition-shadow">
+                    <div className="bg-white rounded-2xl border border-color-light p-6 h-full flex flex-col justify-between transition-all duration-300 hover:scale-[1.02]" style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}>
                       <div>
-                        <div className="text-5xl mb-4">{card.image}</div>
+                        <div className="text-5xl mb-4 flex-shrink-0 leading-none" style={{ minHeight: '3rem' }}>{card.image}</div>
                         <h3 className="text-xl font-bold text-color-dark mb-2">
                           {card.title}
                         </h3>

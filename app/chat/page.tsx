@@ -20,18 +20,34 @@ interface Chat {
   time: string;
   unread: number;
   participants?: Array<{ _id: string; name: string; email: string }>;
+  isAI?: boolean;
 }
 
 export default function ChatPage() {
-  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  // Чат с Auen AI всегда доступен
+  const auenAIChatDefault: Chat = {
+    id: "auen-ai",
+    name: "Auen AI",
+    avatar: "🤖",
+    lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+    time: "только что",
+    unread: 0,
+    isAI: true,
+  };
+
+  const [selectedChat, setSelectedChat] = useState<string | null>("auen-ai");
   const [messageInput, setMessageInput] = useState("");
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<Chat[]>([auenAIChatDefault]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadChats();
+    // Загружаем сообщения для AI чата при первой загрузке
+    if (selectedChat === "auen-ai") {
+      loadMessages("auen-ai");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -43,20 +59,63 @@ export default function ChatPage() {
 
   const loadChats = async () => {
     try {
+      // Чат с Auen AI всегда должен быть доступен
+      const auenAIChat: Chat = {
+        id: "auen-ai",
+        name: "Auen AI",
+        avatar: "🤖",
+        lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+        time: "только что",
+        unread: 0,
+        isAI: true,
+      };
+
       const userId = localStorage.getItem("userId") || "";
-      if (!userId) return;
+      
+      // Загружаем обычные чаты, если есть userId
+      if (userId) {
+        try {
+          const response = await fetch(`/api/chats?userId=${userId}`);
+          const result = await response.json();
 
-      const response = await fetch(`/api/chats?userId=${userId}`);
-      const result = await response.json();
-
-      if (result.success) {
-        setChats(result.data);
-        if (result.data.length > 0 && !selectedChat) {
-          setSelectedChat(result.data[0].id);
+          if (result.success) {
+            // Добавляем чат с Auen AI первым в списке
+            const allChats = [auenAIChat, ...result.data];
+            setChats(allChats);
+          } else {
+            // Если API вернул ошибку, показываем только чат с AI
+            setChats([auenAIChat]);
+          }
+        } catch (error) {
+          console.error("Error loading chats:", error);
+          // При ошибке загрузки показываем только чат с AI
+          setChats([auenAIChat]);
         }
+      } else {
+        // Если нет userId, показываем только чат с AI
+        setChats([auenAIChat]);
+      }
+
+      // Если нет выбранного чата, выбираем чат с AI
+      if (!selectedChat) {
+        setSelectedChat("auen-ai");
       }
     } catch (error) {
       console.error("Error loading chats:", error);
+      // В случае ошибки все равно показываем чат с AI
+      const auenAIChat: Chat = {
+        id: "auen-ai",
+        name: "Auen AI",
+        avatar: "🤖",
+        lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+        time: "только что",
+        unread: 0,
+        isAI: true,
+      };
+      setChats([auenAIChat]);
+      if (!selectedChat) {
+        setSelectedChat("auen-ai");
+      }
     } finally {
       setLoading(false);
     }
@@ -64,6 +123,29 @@ export default function ChatPage() {
 
   const loadMessages = async (chatId: string) => {
     try {
+      // Если это чат с AI, загружаем сообщения из localStorage или показываем приветствие
+      if (chatId === "auen-ai") {
+        const storedMessages = localStorage.getItem(`auen-ai-messages-${localStorage.getItem("userId")}`);
+        if (storedMessages) {
+          setMessages(JSON.parse(storedMessages));
+        } else {
+          // Приветственное сообщение от AI
+          setMessages([
+            {
+              id: "ai-welcome",
+              text: "Привет! Я Auen AI, ваш помощник. Я могу помочь вам с поиском инструментов, ответить на вопросы и многое другое. Чем могу помочь?",
+              sender: "other",
+              time: new Date().toLocaleTimeString("ru-RU", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              read: true,
+            },
+          ]);
+        }
+        return;
+      }
+
       const userId = localStorage.getItem("userId") || "";
       const response = await fetch(`/api/chats/${chatId}/messages?userId=${userId}`);
       const result = await response.json();
@@ -76,8 +158,6 @@ export default function ChatPage() {
     }
   };
 
-  const currentChat = chats.find((chat) => chat.id === selectedChat);
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !selectedChat) return;
@@ -85,7 +165,80 @@ export default function ChatPage() {
     setSending(true);
     try {
       const userId = localStorage.getItem("userId") || "";
-      
+      const messageText = messageInput.trim();
+
+      // Если это чат с AI
+      if (selectedChat === "auen-ai") {
+        // Добавляем сообщение пользователя
+        const userMessage: Message = {
+          id: `msg-${Date.now()}-user`,
+          text: messageText,
+          sender: "me",
+          time: new Date().toLocaleTimeString("ru-RU", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          read: true,
+        };
+
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
+        setMessageInput("");
+        
+        // Сохраняем в localStorage
+        localStorage.setItem(`auen-ai-messages-${userId}`, JSON.stringify(newMessages));
+
+        // Обновляем список чатов сразу с сообщением пользователя
+        setChats((prevChats) => {
+          return prevChats.map((chat) => {
+            if (chat.id === "auen-ai") {
+              return {
+                ...chat,
+                lastMessage: messageText.length > 50 ? messageText.substring(0, 50) + "..." : messageText,
+                time: "только что",
+              };
+            }
+            return chat;
+          });
+        });
+
+        // Симулируем ответ от AI (здесь можно добавить реальный AI API)
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `msg-${Date.now()}-ai`,
+            text: "Спасибо за ваше сообщение! В данный момент я в разработке, но скоро смогу помочь вам с поиском инструментов и ответами на вопросы. 😊",
+            sender: "other",
+            time: new Date().toLocaleTimeString("ru-RU", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            read: true,
+          };
+          
+          const updatedMessages = [...newMessages, aiMessage];
+          setMessages(updatedMessages);
+          localStorage.setItem(`auen-ai-messages-${userId}`, JSON.stringify(updatedMessages));
+          
+          // Обновляем список чатов, чтобы показать последнее сообщение
+          setChats((prevChats) => {
+            return prevChats.map((chat) => {
+              if (chat.id === "auen-ai") {
+                return {
+                  ...chat,
+                  lastMessage: aiMessage.text,
+                  time: "только что",
+                };
+              }
+              return chat;
+            });
+          });
+        }, 1000);
+
+        setSending(false);
+        return;
+      }
+
+      // Обычная логика для обычных чатов
       // Получаем ID другого участника из API
       const receiverResponse = await fetch(`/api/chats/${selectedChat}/receiver?userId=${userId}`);
       const receiverResult = await receiverResponse.json();
@@ -102,7 +255,7 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: messageInput,
+          text: messageText,
           senderId: userId,
           receiverId,
         }),
@@ -159,16 +312,23 @@ export default function ChatPage() {
                       onClick={() => setSelectedChat(chat.id)}
                       className={`w-full p-4 text-left border-b border-color-light hover:bg-color-lightest transition-colors ${
                         selectedChat === chat.id ? "bg-color-lightest" : ""
-                      }`}
+                      } ${chat.isAI ? "bg-gradient-to-r from-color-medium/5 to-transparent" : ""}`}
                     >
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-full bg-color-light flex items-center justify-center text-2xl flex-shrink-0">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0 ${
+                        chat.isAI ? "bg-gradient-to-br from-color-medium to-color-dark" : "bg-color-light"
+                      }`}>
                         {chat.avatar}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="font-semibold text-color-dark text-sm truncate">
                             {chat.name}
+                            {chat.isAI && (
+                              <span className="ml-2 text-xs bg-color-medium/20 text-color-medium px-2 py-0.5 rounded-full">
+                                AI
+                              </span>
+                            )}
                           </h3>
                           <span className="text-xs text-color-medium flex-shrink-0 ml-2">
                             {chat.time}
@@ -206,7 +366,21 @@ export default function ChatPage() {
               </div>
             ) : selectedChat ? (
               (() => {
-                const currentChat = chats.find((c) => c.id === selectedChat);
+                let currentChat = chats.find((c) => c.id === selectedChat);
+                
+                // Fallback для чата с AI, если его нет в массиве
+                if (!currentChat && selectedChat === "auen-ai") {
+                  currentChat = {
+                    id: "auen-ai",
+                    name: "Auen AI",
+                    avatar: "🤖",
+                    lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+                    time: "только что",
+                    unread: 0,
+                    isAI: true,
+                  };
+                }
+                
                 if (!currentChat) {
                   return (
                     <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light h-full flex items-center justify-center">
@@ -218,12 +392,23 @@ export default function ChatPage() {
               <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light flex flex-col h-full">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-color-light flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-color-light flex items-center justify-center text-xl">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+                    currentChat.isAI ? "bg-gradient-to-br from-color-medium to-color-dark" : "bg-color-light"
+                  }`}>
                     {currentChat.avatar}
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-semibold text-color-dark">{currentChat.name}</h2>
-                    <p className="text-xs text-color-medium">В сети</p>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-semibold text-color-dark">{currentChat.name}</h2>
+                      {currentChat.isAI && (
+                        <span className="text-xs bg-color-medium/20 text-color-medium px-2 py-0.5 rounded-full">
+                          AI
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-color-medium">
+                      {currentChat.isAI ? "Всегда в сети" : "В сети"}
+                    </p>
                   </div>
                   <button className="p-2 rounded-lg hover:bg-color-lightest transition-colors">
                     <svg
@@ -374,7 +559,23 @@ export default function ChatPage() {
           </BlurFade>
 
           {/* Mobile Chat Window */}
-          {selectedChat && (
+          {selectedChat && (() => {
+            let mobileCurrentChat = chats.find((c) => c.id === selectedChat);
+            
+            // Fallback для чата с AI, если его нет в массиве
+            if (!mobileCurrentChat && selectedChat === "auen-ai") {
+              mobileCurrentChat = {
+                id: "auen-ai",
+                name: "Auen AI",
+                avatar: "🤖",
+                lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+                time: "только что",
+                unread: 0,
+                isAI: true,
+              };
+            }
+            
+            return mobileCurrentChat ? (
             <div className="lg:hidden fixed inset-0 bg-white z-50 flex flex-col">
               <div className="p-4 border-b border-color-light flex items-center gap-3">
                 <button
@@ -396,11 +597,20 @@ export default function ChatPage() {
                     <polyline points="12 19 5 12 12 5"></polyline>
                   </svg>
                 </button>
-                <div className="w-10 h-10 rounded-full bg-color-light flex items-center justify-center text-xl">
-                  {currentChat?.avatar}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+                  mobileCurrentChat.isAI ? "bg-gradient-to-br from-color-medium to-color-dark" : "bg-color-light"
+                }`}>
+                  {mobileCurrentChat.avatar}
                 </div>
                 <div className="flex-1">
-                  <h2 className="font-semibold text-color-dark">{currentChat?.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-color-dark">{mobileCurrentChat.name}</h2>
+                    {mobileCurrentChat.isAI && (
+                      <span className="text-xs bg-color-medium/20 text-color-medium px-2 py-0.5 rounded-full">
+                        AI
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -462,7 +672,8 @@ export default function ChatPage() {
                 </button>
               </form>
             </div>
-          )}
+            ) : null;
+          })()}
         </div>
       </div>
     </div>

@@ -167,7 +167,20 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    // Подключение к БД с обработкой ошибок
+    try {
+      await connectDB();
+    } catch (dbError: unknown) {
+      console.error("Database connection error:", dbError);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Ошибка подключения к базе данных",
+          error: process.env.NODE_ENV === "development" && dbError instanceof Error ? dbError.message : undefined,
+        },
+        { status: 500 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
