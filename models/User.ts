@@ -9,6 +9,7 @@ export interface IUser extends Document {
   googleId?: string;
   avatar?: string;
   role: "user" | "admin" | "moderator";
+  isBlocked: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -32,7 +33,7 @@ const UserSchema: Schema = new Schema(
     email: {
       type: String,
       required: [true, "Email обязателен"],
-      unique: true,
+      unique: true, // unique автоматически создает индекс
       lowercase: true,
       trim: true,
       validate: {
@@ -41,7 +42,6 @@ const UserSchema: Schema = new Schema(
         },
         message: "Некорректный email адрес",
       },
-      index: true,
     },
     phone: {
       type: String,
@@ -70,6 +70,11 @@ const UserSchema: Schema = new Schema(
       type: String,
       enum: ["user", "admin", "moderator"],
       default: "user",
+      index: true,
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
       index: true,
     },
   },
@@ -102,12 +107,29 @@ UserSchema.methods.comparePassword = async function (
   if (!this.password) {
     return false;
   }
-  return bcrypt.compare(candidatePassword, this.password);
+  
+  // Проверяем, что candidatePassword является строкой
+  if (typeof candidatePassword !== "string" || candidatePassword.length === 0) {
+    return false;
+  }
+  
+  // Проверяем, что this.password является строкой
+  if (typeof this.password !== "string") {
+    console.error("Password is not a string:", typeof this.password);
+    return false;
+  }
+  
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    // В случае ошибки (например, поврежденный хеш) возвращаем false
+    console.error("Error comparing password:", error);
+    return false;
+  }
 };
 
 // Индексы для оптимизации запросов
-UserSchema.index({ email: 1 });
-UserSchema.index({ googleId: 1 });
+// email и googleId уже имеют индексы (email: index: true, googleId: unique: true)
 UserSchema.index({ createdAt: -1 });
 
 const User: Model<IUser> =

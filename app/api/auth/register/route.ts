@@ -53,8 +53,26 @@ export async function POST(request: NextRequest) {
       }, 400);
     }
 
+    // Нормализация телефона перед валидацией для более гибкого ввода
+    const normalizedBody = { ...body };
+    if (normalizedBody.phone) {
+      // Убираем все пробелы, скобки, дефисы
+      let phone = String(normalizedBody.phone).replace(/[\s\-\(\)]/g, "");
+      // Добавляем + если его нет
+      if (!phone.startsWith("+")) {
+        if (phone.startsWith("7")) {
+          phone = "+" + phone;
+        } else if (phone.startsWith("8")) {
+          phone = "+7" + phone.substring(1);
+        } else {
+          phone = "+7" + phone;
+        }
+      }
+      normalizedBody.phone = phone;
+    }
+
     // Валидация данных
-    const validation = validate(registerSchema, body);
+    const validation = validate(registerSchema, normalizedBody);
 
     if (!validation.success) {
       return jsonResponse({
@@ -63,22 +81,7 @@ export async function POST(request: NextRequest) {
       }, 400);
     }
 
-    const { name, email, phone: phoneRaw, password } = validation.data;
-    let phone = phoneRaw;
-
-    // Нормализация телефона: убираем все пробелы, скобки, дефисы
-    // Оставляем только цифры и знак +
-    phone = phone.replace(/[\s\-\(\)]/g, "");
-    if (!phone.startsWith("+")) {
-      // Если нет +, добавляем для казахстанских номеров
-      if (phone.startsWith("7")) {
-        phone = "+" + phone;
-      } else if (phone.startsWith("8")) {
-        phone = "+7" + phone.substring(1);
-      } else {
-        phone = "+7" + phone;
-      }
-    }
+    const { name, email, phone, password } = validation.data;
 
     // Проверка существования пользователя
     const existingUser = await User.findOne({ email });
@@ -94,15 +97,6 @@ export async function POST(request: NextRequest) {
     try {
       console.log("Creating user with data:", { name, email, phone, password: "***" });
       console.log("Phone after normalization:", phone);
-      
-      // Проверяем, что телефон соответствует паттерну MongoDB
-      const phonePattern = /^\+?[1-9]\d{1,14}$/;
-      if (!phonePattern.test(phone)) {
-        return jsonResponse({
-          success: false,
-          errors: { phone: "Телефон должен быть в формате: +77771234567 (без пробелов и скобок)" },
-        }, 400);
-      }
       
       user = await User.create({
         name: name.trim(),

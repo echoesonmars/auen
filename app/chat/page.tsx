@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { BlurFade } from "@/components/ui/blur-fade";
-import { TextAnimate } from "@/components/ui/text-animate";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 
 interface Message {
   id: string;
@@ -23,7 +23,9 @@ interface Chat {
   isAI?: boolean;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
+  const searchParams = useSearchParams();
+  const { showToast } = useToast();
   // Чат с Auen AI всегда доступен
   const auenAIChatDefault: Chat = {
     id: "auen-ai",
@@ -35,21 +37,104 @@ export default function ChatPage() {
     isAI: true,
   };
 
-  const [selectedChat, setSelectedChat] = useState<string | null>("auen-ai");
+  // На мобилке по умолчанию показываем список чатов (null), на десктопе - чат с AI
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [chats, setChats] = useState<Chat[]>([auenAIChatDefault]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [adInfo, setAdInfo] = useState<{ id: string; title: string } | null>(null);
+
+  // Определяем мобильное устройство
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Устанавливаем начальный чат на десктопе
+  useEffect(() => {
+    if (!isMobile && !selectedChat && !searchParams.get("chatId") && !searchParams.get("userId")) {
+      setSelectedChat("auen-ai");
+    }
+  }, [isMobile, searchParams]);
 
   useEffect(() => {
-    loadChats();
-    // Загружаем сообщения для AI чата при первой загрузке
-    if (selectedChat === "auen-ai") {
-      loadMessages("auen-ai");
-    }
+    const initChat = async () => {
+      const chatId = searchParams.get("chatId");
+      const adId = searchParams.get("adId");
+      const userIdParam = searchParams.get("userId");
+
+      // Если есть adId, загружаем информацию об объявлении
+      if (adId) {
+        try {
+          const adResponse = await fetch(`/api/ads/${adId}`);
+          const adResult = await adResponse.json();
+          if (adResult.success) {
+            setAdInfo({ id: adId, title: adResult.data.title });
+          }
+        } catch (error) {
+          console.error("Error loading ad info:", error);
+        }
+      }
+
+      // Загружаем чаты
+      await loadChats();
+
+      // Если передан userId, создаем/находим чат
+      if (userIdParam) {
+        const currentUserId = localStorage.getItem("userId");
+        if (currentUserId) {
+          try {
+            const chatResponse = await fetch("/api/chats", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: currentUserId,
+                receiverId: userIdParam,
+              }),
+            });
+            const chatResult = await chatResponse.json();
+            if (chatResult.success) {
+              // Перезагружаем чаты после создания
+              await loadChats();
+              setSelectedChat(chatResult.data.chatId);
+              // Если есть adId, добавляем сообщение о товаре
+              if (adId && adInfo) {
+                setTimeout(() => {
+                  setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
+                }, 500);
+              }
+            }
+          } catch (error) {
+            console.error("Error creating chat:", error);
+          }
+        }
+      } else if (chatId) {
+        // Если передан chatId, открываем его
+        setSelectedChat(chatId);
+        // Если есть adId, добавляем сообщение о товаре
+        if (adId && adInfo) {
+          setTimeout(() => {
+            setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
+          }, 500);
+        }
+      } else {
+        // Обычная загрузка - на десктопе выбираем AI чат, на мобилке показываем список
+        if (!selectedChat && !isMobile) {
+          setSelectedChat("auen-ai");
+        }
+      }
+    };
+
+    initChat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedChat) {
@@ -109,8 +194,8 @@ export default function ChatPage() {
         setChats([auenAIChat]);
       }
 
-      // Если нет выбранного чата, выбираем чат с AI
-      if (!selectedChat) {
+      // Если нет выбранного чата и это не мобилка, выбираем чат с AI
+      if (!selectedChat && !isMobile) {
         setSelectedChat("auen-ai");
       }
     } catch (error) {
@@ -126,7 +211,7 @@ export default function ChatPage() {
         isAI: true,
       };
       setChats([auenAIChat]);
-      if (!selectedChat) {
+      if (!selectedChat && !isMobile) {
         setSelectedChat("auen-ai");
       }
     } finally {
@@ -274,7 +359,7 @@ export default function ChatPage() {
       
       // Обработка ошибки авторизации
       if (receiverResponse.status === 401) {
-        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
         // Переключаемся на AI чат при ошибке авторизации
         setSelectedChat("auen-ai");
         loadMessages("auen-ai");
@@ -286,11 +371,11 @@ export default function ChatPage() {
       
       if (!receiverResult.success || !receiverResult.data?.receiverId) {
         if (receiverResult.message?.includes("авторизац")) {
-          alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+          showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
           setSelectedChat("auen-ai");
           loadMessages("auen-ai");
         } else {
-          alert("Не удалось определить получателя");
+          showToast("Не удалось определить получателя", "error");
         }
         setSending(false);
         return;
@@ -310,7 +395,7 @@ export default function ChatPage() {
 
       // Обработка ошибки авторизации
       if (response.status === 401) {
-        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
         setSelectedChat("auen-ai");
         loadMessages("auen-ai");
         setSending(false);
@@ -320,7 +405,7 @@ export default function ChatPage() {
       const result = await response.json();
       
       if (result.message?.includes("авторизац")) {
-        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+        showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
         setSelectedChat("auen-ai");
         loadMessages("auen-ai");
         setSending(false);
@@ -340,33 +425,19 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-color-lightest">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <BlurFade inView={true} delay={0.1} direction="up">
-          <TextAnimate
-            as="h1"
-            animation="slideUp"
-            by="word"
-            startOnView={true}
-            delay={0.1}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold text-color-dark mb-6 sm:mb-8"
-          >
-            Сообщения
-          </TextAnimate>
-        </BlurFade>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-[calc(100vh-12rem)] sm:h-[calc(100vh-14rem)]">
-          {/* Chat List */}
-          <BlurFade inView={true} delay={0.2} direction="up" className="lg:col-span-1">
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light overflow-hidden flex flex-col h-full">
-              <div className="p-4 border-b border-color-light">
-                <input
-                  type="text"
-                  placeholder="Поиск чатов..."
-                  className="w-full px-4 py-2 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-sm text-color-dark placeholder:text-color-medium"
-                />
-              </div>
-              <div className="flex-1 overflow-y-auto">
+    <div className="bg-color-lightest fixed top-16 left-0 right-0 bottom-0 lg:top-0" style={{ overflow: 'hidden' }}>
+      <div className="w-full h-full flex flex-1 min-h-0" style={{ overflow: 'hidden' }}>
+        {/* Chat List */}
+        <div className={`w-full ${selectedChat && isMobile ? 'hidden' : 'flex'} lg:w-1/3 lg:flex border-r border-color-light flex-col`} style={{ height: '100%', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+          <div className="bg-white flex flex-col h-full min-h-0" style={{ overflow: 'hidden' }}>
+            <div className="p-4 border-b border-color-light flex-shrink-0">
+              <input
+                type="text"
+                placeholder="Поиск чатов..."
+                className="w-full px-4 py-2 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-sm text-color-dark placeholder:text-color-medium"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
                 {loading ? (
                   <div className="p-4 text-center text-color-medium">Загрузка...</div>
                 ) : chats.length > 0 ? (
@@ -415,17 +486,12 @@ export default function ChatPage() {
                 )}
               </div>
             </div>
-          </BlurFade>
+          </div>
 
-          {/* Chat Window */}
-          <BlurFade
-            inView={true}
-            delay={0.3}
-            direction="up"
-            className="lg:col-span-2 hidden lg:block"
-          >
+        {/* Chat Window - Desktop */}
+        <div className="hidden lg:flex lg:w-2/3 flex-col" style={{ height: '100%', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
             {loading ? (
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light h-full flex items-center justify-center">
+              <div className="bg-white flex-1 flex items-center justify-center" style={{ minHeight: 0 }}>
                 <p className="text-color-medium">Загрузка...</p>
               </div>
             ) : selectedChat ? (
@@ -447,15 +513,15 @@ export default function ChatPage() {
                 
                 if (!currentChat) {
                   return (
-                    <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light h-full flex items-center justify-center">
+                    <div className="bg-white flex-1 flex items-center justify-center" style={{ minHeight: 0 }}>
                       <p className="text-color-medium">Чат не найден</p>
                     </div>
                   );
                 }
                 return (
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light flex flex-col h-full">
+              <div className="bg-white flex flex-col flex-1" style={{ minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
                 {/* Chat Header */}
-                <div className="p-4 border-b border-color-light flex items-center gap-3">
+                <div className="p-4 border-b border-color-light flex items-center gap-3 flex-shrink-0">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
                     currentChat.isAI ? "bg-gradient-to-br from-color-medium to-color-dark" : "bg-color-light"
                   }`}>
@@ -494,7 +560,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-color-lightest/50">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-color-lightest/50" style={{ minHeight: 0, maxHeight: '100%' }}>
                   {messages.length > 0 ? (
                     messages.map((message) => (
                     <div
@@ -547,7 +613,7 @@ export default function ChatPage() {
                 {/* Message Input */}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-4 border-t border-color-light flex items-center gap-3"
+                  className="p-4 border-t border-color-light flex items-center gap-3 flex-shrink-0"
                 >
                   <button
                     type="button"
@@ -601,7 +667,7 @@ export default function ChatPage() {
                 );
               })()
             ) : (
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light h-full flex items-center justify-center">
+              <div className="bg-white flex-1 flex items-center justify-center" style={{ minHeight: 0 }}>
                 <div className="text-center">
                   <svg
                     width="64"
@@ -620,28 +686,29 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
-          </BlurFade>
-
-          {/* Mobile Chat Window */}
-          {selectedChat && (() => {
-            let mobileCurrentChat = chats.find((c) => c.id === selectedChat);
-            
-            // Fallback для чата с AI, если его нет в массиве
-            if (!mobileCurrentChat && selectedChat === "auen-ai") {
-              mobileCurrentChat = {
-                id: "auen-ai",
-                name: "Auen AI",
-                avatar: "🤖",
-                lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
-                time: "только что",
-                unread: 0,
-                isAI: true,
-              };
-            }
-            
-            return mobileCurrentChat ? (
-            <div className="lg:hidden fixed inset-0 bg-white z-50 flex flex-col">
-              <div className="p-4 border-b border-color-light flex items-center gap-3">
+          </div>
+        </div>
+      
+      {/* Mobile Chat Window */}
+      {selectedChat && isMobile && (() => {
+        let mobileCurrentChat = chats.find((c) => c.id === selectedChat);
+        
+        // Fallback для чата с AI, если его нет в массиве
+        if (!mobileCurrentChat && selectedChat === "auen-ai") {
+          mobileCurrentChat = {
+            id: "auen-ai",
+            name: "Auen AI",
+            avatar: "🤖",
+            lastMessage: "Привет! Я ваш AI помощник. Чем могу помочь?",
+            time: "только что",
+            unread: 0,
+            isAI: true,
+          };
+        }
+        
+        return mobileCurrentChat ? (
+          <div className="lg:hidden fixed top-16 left-0 right-0 bottom-0 bg-white z-50 flex flex-col min-h-0" style={{ overflow: 'hidden' }}>
+              <div className="p-4 border-b border-color-light flex items-center gap-3 flex-shrink-0">
                 <button
                   onClick={() => setSelectedChat(null)}
                   className="p-2 rounded-lg hover:bg-color-lightest transition-colors"
@@ -678,7 +745,7 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-color-lightest/50">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-color-lightest/50 min-h-0">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -706,7 +773,7 @@ export default function ChatPage() {
 
               <form
                 onSubmit={handleSendMessage}
-                className="p-4 border-t border-color-light flex items-center gap-3"
+                className="p-4 border-t border-color-light flex items-center gap-3 flex-shrink-0"
               >
                 <input
                   type="text"
@@ -735,12 +802,25 @@ export default function ChatPage() {
                   </svg>
                 </button>
               </form>
-            </div>
-            ) : null;
-          })()}
+          </div>
+        ) : null;
+      })()}
+    </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-color-lightest flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-medium mx-auto mb-4"></div>
+          <p className="text-color-medium">Загрузка...</p>
         </div>
       </div>
-    </div>
+    }>
+      <ChatPageContent />
+    </Suspense>
   );
 }
 

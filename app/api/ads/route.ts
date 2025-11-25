@@ -67,11 +67,20 @@ export async function POST(request: NextRequest) {
       }, 401);
     }
 
+    // Валидация формата userId (должен быть валидный ObjectId)
+    const mongoose = (await import("mongoose")).default;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return jsonResponse({
+        success: false,
+        message: "Некорректный формат ID пользователя",
+        errors: { userId: "ID пользователя имеет неверный формат" },
+      }, 400);
+    }
+
     // Создание объявления
     let ad;
     try {
       // Преобразуем userId в ObjectId
-      const mongoose = (await import("mongoose")).default;
       const userIdObjectId = new mongoose.Types.ObjectId(userId);
       
       console.log("Creating ad with data:", { 

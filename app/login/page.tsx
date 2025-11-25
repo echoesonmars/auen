@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 
 function LoginPageContent() {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ function LoginPageContent() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const error = searchParams.get("error");
@@ -57,11 +59,31 @@ function LoginPageContent() {
         }),
       });
 
+      // Проверяем статус ответа
+      if (!response.ok) {
+        // Если статус не OK, пытаемся получить JSON с ошибкой
+        let errorResult;
+        try {
+          errorResult = await response.json();
+        } catch {
+          setErrors({ general: `Ошибка сервера: ${response.status}` });
+          setIsLoading(false);
+          return;
+        }
+        
+        if (errorResult.errors) {
+          setErrors(errorResult.errors);
+        } else {
+          setErrors({ general: errorResult.message || "Ошибка входа. Проверьте email и пароль." });
+        }
+        setIsLoading(false);
+        return;
+      }
+
       let result;
       try {
         result = await response.json();
-      } catch (jsonError) {
-        console.error("JSON parse error:", jsonError);
+      } catch {
         setErrors({ general: "Ошибка обработки ответа сервера. Попробуйте снова." });
         setIsLoading(false);
         return;
@@ -81,7 +103,7 @@ function LoginPageContent() {
       }
 
       // Успешный вход
-      if (result.data && result.data.id) {
+      if (result.success && result.data && result.data.id) {
         // Сохраняем данные пользователя
         localStorage.setItem("userId", result.data.id);
         localStorage.setItem("userName", result.data.name || "");
@@ -93,11 +115,10 @@ function LoginPageContent() {
         const redirect = searchParams.get("redirect");
         router.push(redirect || "/");
       } else {
-        setErrors({ general: "Ошибка: данные пользователя не получены" });
+        setErrors({ general: result.message || "Ошибка: данные пользователя не получены" });
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch {
       setErrors({ general: "Ошибка подключения к серверу. Проверьте интернет-соединение." });
       setIsLoading(false);
     }
@@ -291,11 +312,10 @@ function LoginPageContent() {
                       if (result.success && result.url) {
                         window.location.href = result.url;
                       } else {
-                        alert(result.message || "Ошибка при подключении к Google");
+                        showToast(result.message || "Ошибка при подключении к Google", "error");
                       }
-                    } catch (error) {
-                      console.error("Google OAuth error:", error);
-                      alert("Ошибка при подключении к Google");
+                    } catch {
+                      showToast("Ошибка при подключении к Google", "error");
                     }
                   }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-color-light hover:bg-color-lightest transition-all duration-200 text-sm font-medium text-color-dark"

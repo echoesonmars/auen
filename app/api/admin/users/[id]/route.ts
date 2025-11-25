@@ -42,16 +42,19 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { role } = body;
+    const { role, isBlocked } = body;
 
-    if (!role || !["user", "admin", "moderator"].includes(role)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Некорректная роль",
-        },
-        { status: 400 }
-      );
+    // Обновление роли
+    if (role !== undefined) {
+      if (!["user", "admin", "moderator"].includes(role)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Некорректная роль",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Нельзя изменить роль самому себе
@@ -65,9 +68,17 @@ export async function PATCH(
       );
     }
 
+    const updateData: Record<string, unknown> = {};
+    if (role !== undefined) {
+      updateData.role = role;
+    }
+    if (isBlocked !== undefined) {
+      updateData.isBlocked = isBlocked;
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
-      { role },
+      { $set: updateData },
       { new: true }
     ).select("-password").lean();
 

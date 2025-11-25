@@ -89,3 +89,78 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const body = await request.json();
+    const { userId, receiverId } = body;
+
+    if (!userId || !receiverId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Необходимо указать userId и receiverId",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (userId === receiverId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Нельзя создать чат с самим собой",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Проверяем, существует ли уже чат между этими пользователями
+    const existingChat = await Chat.findOne({
+      participants: { $all: [userId, receiverId] },
+    }).lean();
+
+    if (existingChat) {
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            chatId: existingChat._id.toString(),
+            exists: true,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // Создаем новый чат
+    const newChat = await Chat.create({
+      participants: [userId, receiverId],
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          chatId: newChat._id.toString(),
+          exists: false,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Create chat error:", err);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Ошибка при создании чата",
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
+

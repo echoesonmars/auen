@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
+import { useToast } from "@/components/ui/toast";
 import RichTextEditor from "../components/RichTextEditor";
 
 export default function CreatePage() {
   const router = useRouter();
+  const { showToast } = useToast();
 
   // Проверка авторизации при загрузке страницы
   useEffect(() => {
@@ -118,28 +120,23 @@ export default function CreatePage() {
           });
 
           if (!imageResponse.ok) {
-            const errorText = await imageResponse.text();
-            console.error("Image upload failed:", imageResponse.status, errorText);
-            setErrors({ general: `Ошибка загрузки изображений (${imageResponse.status}). Проверьте консоль для деталей.` });
+            await imageResponse.text(); // Читаем ответ для очистки потока
+            setErrors({ general: `Ошибка загрузки изображений (${imageResponse.status})` });
             setIsSubmitting(false);
             return;
           }
 
           const imageResult = await imageResponse.json();
-          console.log("Image upload result:", imageResult);
 
           if (imageResult.success && imageResult.data && imageResult.data.images) {
             imageUrls = imageResult.data.images;
-            console.log("Images uploaded successfully:", imageUrls.length, "images");
           } else {
             const errorMessage = imageResult.message || "Ошибка при загрузке изображений";
-            console.error("Image upload failed:", errorMessage);
             setErrors({ general: errorMessage });
             setIsSubmitting(false);
             return;
           }
         } catch (imageError) {
-          console.error("Error uploading images:", imageError);
           const errorMessage = imageError instanceof Error ? imageError.message : "Ошибка при загрузке изображений";
           setErrors({ general: `Ошибка при загрузке изображений: ${errorMessage}` });
           setIsSubmitting(false);
@@ -223,8 +220,10 @@ export default function CreatePage() {
       }
 
       // Успешно создано
-      alert("Объявление успешно создано!");
-      window.location.href = "/profile";
+      showToast("Объявление успешно создано!", "success");
+      setTimeout(() => {
+        window.location.href = "/profile";
+      }, 1000);
     } catch (error: unknown) {
       const err = error as Error;
       console.error("Error creating ad:", err);
@@ -247,7 +246,7 @@ export default function CreatePage() {
         : files;
       
       if (filesToAdd.length === 0) {
-        alert("Можно загрузить максимум 10 фотографий");
+        showToast("Можно загрузить максимум 10 фотографий", "warning");
         e.target.value = "";
         return;
       }
@@ -257,7 +256,7 @@ export default function CreatePage() {
       const invalidFiles = filesToAdd.filter(file => !validTypes.includes(file.type));
       
       if (invalidFiles.length > 0) {
-        alert(`Некоторые файлы имеют неподдерживаемый формат. Поддерживаются: JPEG, PNG, WebP`);
+        showToast("Некоторые файлы имеют неподдерживаемый формат. Поддерживаются: JPEG, PNG, WebP", "warning");
       }
 
       const validFiles = filesToAdd.filter(file => validTypes.includes(file.type));
@@ -298,11 +297,11 @@ export default function CreatePage() {
         })
         .catch((error) => {
           console.error("Error loading image previews:", error);
-          alert("Ошибка при загрузке превью изображений. Попробуйте снова.");
+          showToast("Ошибка при загрузке превью изображений. Попробуйте снова.", "error");
         });
     } catch (error) {
       console.error("Error handling image change:", error);
-      alert("Ошибка при выборе файлов. Попробуйте снова.");
+      showToast("Ошибка при выборе файлов. Попробуйте снова.", "error");
     } finally {
       // Сбрасываем input, чтобы можно было загрузить те же файлы снова
       e.target.value = "";

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,11 +332,11 @@ export default function RegisterPage() {
                       if (result.success && result.url) {
                         window.location.href = result.url;
                       } else {
-                        alert(result.message || "Ошибка при подключении к Google");
+                        showToast(result.message || "Ошибка при подключении к Google", "error");
                       }
                     } catch (error) {
                       console.error("Google OAuth error:", error);
-                      alert("Ошибка при подключении к Google");
+                      showToast("Ошибка при подключении к Google", "error");
                     }
                   }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-color-light hover:bg-color-lightest transition-all duration-200 text-sm font-medium text-color-dark"

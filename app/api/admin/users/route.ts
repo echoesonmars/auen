@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
     const userId = request.nextUrl.searchParams.get("userId");
     const page = parseInt(request.nextUrl.searchParams.get("page") || "1");
     const limit = parseInt(request.nextUrl.searchParams.get("limit") || "20");
+    const search = request.nextUrl.searchParams.get("search");
+    const roleFilter = request.nextUrl.searchParams.get("role");
 
     if (!userId) {
       return NextResponse.json(
@@ -37,9 +39,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Формируем запрос
+    const query: Record<string, unknown> = {};
+    if (roleFilter && roleFilter !== "all") {
+      query.role = roleFilter;
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
+
     const skip = (page - 1) * limit;
 
-    const users = await User.find()
+    const users = await User.find(query)
       .select("-password")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -58,12 +73,13 @@ export async function GET(request: NextRequest) {
           role: user.role || "user",
           avatar: user.avatar || null,
           adsCount,
+          isBlocked: user.isBlocked || false,
           createdAt: user.createdAt,
         };
       })
     );
 
-    const total = await User.countDocuments();
+    const total = await User.countDocuments(query);
 
     return NextResponse.json(
       {

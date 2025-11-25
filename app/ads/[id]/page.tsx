@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { useMetadata } from "@/app/hooks/useMetadata";
+import { useToast } from "@/components/ui/toast";
 
 interface Ad {
   _id: string;
@@ -21,6 +22,7 @@ interface Ad {
     name: string;
     email: string;
     phone?: string;
+    avatar?: string;
   };
   createdAt: string;
   status: string;
@@ -32,6 +34,7 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
   const id = resolvedParams.id;
   
   const router = useRouter();
+  const { showToast } = useToast();
   const [ad, setAd] = useState<Ad | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -416,8 +419,35 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                 {/* Contact Buttons */}
                 {!isOwner && (
                   <div className="space-y-3 mb-6">
-                    <Link
-                      href={`/chat?userId=${ad.userId._id}&adId=${ad._id}`}
+                    <button
+                      onClick={async () => {
+                        const userId = localStorage.getItem("userId");
+                        if (!userId) {
+                          router.push("/login");
+                          return;
+                        }
+                        try {
+                          // Создаем или находим чат
+                          const chatResponse = await fetch("/api/chats", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              userId,
+                              receiverId: ad.userId._id,
+                            }),
+                          });
+                          const chatResult = await chatResponse.json();
+                          if (chatResult.success) {
+                            // Открываем чат с первым сообщением о товаре
+                            router.push(`/chat?chatId=${chatResult.data.chatId}&adId=${ad._id}`);
+                          } else {
+                            showToast("Ошибка при создании чата: " + chatResult.message, "error");
+                          }
+                        } catch (error) {
+                          console.error("Error creating chat:", error);
+                          showToast("Ошибка при создании чата", "error");
+                        }
+                      }}
                       className="w-full bg-color-medium text-white px-4 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
                     >
                       <svg
@@ -433,7 +463,7 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                       </svg>
                       Написать сообщение
-                    </Link>
+                    </button>
                     {ad.userId.phone && (
                     <a
                       href={`tel:${ad.userId.phone}`}
@@ -461,15 +491,44 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                 <div className="pt-6 border-t border-color-light">
                   <Link
                     href={`/user/${ad.userId._id}`}
-                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
                   >
-                    <div className="w-12 h-12 rounded-full bg-color-light flex items-center justify-center text-2xl">
-                      👤
+                    <div className="w-12 h-12 rounded-full bg-color-light flex items-center justify-center text-2xl group-hover:bg-color-medium transition-colors">
+                      {ad.userId.avatar ? (
+                        <img
+                          src={ad.userId.avatar}
+                          alt={ad.userId.name}
+                          className="w-full h-full rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) parent.innerHTML = "👤";
+                          }}
+                        />
+                      ) : (
+                        "👤"
+                      )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-color-dark">{ad.userId.name}</p>
+                    <div className="flex-1">
+                      <p className="font-semibold text-color-dark group-hover:text-color-medium transition-colors">
+                        {ad.userId.name}
+                      </p>
                       <p className="text-sm text-color-medium">Продавец</p>
                     </div>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-color-medium group-hover:text-color-dark transition-colors"
+                    >
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                   </Link>
                 </div>
               </div>

@@ -15,7 +15,7 @@ export async function GET(
     const { id } = resolvedParams;
 
     const ad = await Ad.findById(id)
-      .populate("userId", "name email phone")
+      .populate("userId", "name email phone avatar")
       .lean();
 
     if (!ad) {
@@ -98,6 +98,31 @@ export async function PUT(
       );
     }
 
+    // Валидация формата userId (должен быть валидный ObjectId)
+    const mongoose = (await import("mongoose")).default;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Некорректный формат ID пользователя",
+          errors: { userId: "ID пользователя имеет неверный формат" },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Валидация формата id объявления
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Некорректный формат ID объявления",
+          errors: { id: "ID объявления имеет неверный формат" },
+        },
+        { status: 400 }
+      );
+    }
+
     // Проверяем, существует ли объявление
     const existingAd = await Ad.findById(id);
 
@@ -112,7 +137,6 @@ export async function PUT(
     }
 
     // Проверяем, что пользователь является владельцем объявления
-    const mongoose = (await import("mongoose")).default;
     const userIdObjectId = new mongoose.Types.ObjectId(userId);
 
     if (existingAd.userId.toString() !== userIdObjectId.toString()) {

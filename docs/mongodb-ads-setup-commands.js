@@ -67,8 +67,8 @@ db.runCommand({
         },
         status: {
           bsonType: "string",
-          enum: ["active", "inactive", "sold"],
-          description: "Некорректный статус"
+          enum: ["active", "inactive", "sold", "pending", "rejected"],
+          description: "Статус объявления: active (активно), inactive (неактивно), sold (продано), pending (на модерации), rejected (отклонено)"
         },
         createdAt: {
           bsonType: "date"

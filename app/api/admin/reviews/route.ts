@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
-import Ad from "@/models/Ad";
+import Review from "@/models/Review";
 
 export const dynamic = 'force-dynamic';
 
-// Получение всех объявлений с фильтрацией
+// Получить все отзывы (для админа)
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
     const userId = request.nextUrl.searchParams.get("userId");
-    const status = request.nextUrl.searchParams.get("status");
     const page = parseInt(request.nextUrl.searchParams.get("page") || "1");
     const limit = parseInt(request.nextUrl.searchParams.get("limit") || "20");
     const search = request.nextUrl.searchParams.get("search");
@@ -39,50 +38,54 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Формируем запрос
-    const query: Record<string, unknown> = {};
-    if (status && status !== "all") {
-      query.status = status;
-    }
+    let query: Record<string, unknown> = {};
 
-    // Поиск по названию, категории, локации
+    // Поиск по тексту отзыва
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { category: { $regex: search, $options: "i" } },
-        { location: { $regex: search, $options: "i" } },
-      ];
+      query = {
+        $or: [
+          { comment: { $regex: search, $options: "i" } },
+        ],
+      };
     }
 
     const skip = (page - 1) * limit;
 
-    const ads = await Ad.find(query)
-      .populate("userId", "name email")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const total = await Ad.countDocuments(query);
+    const [reviews, total] = await Promise.all([
+      Review.find(query)
+        .populate("userId", "name email avatar")
+        .populate("adId", "title")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Review.countDocuments(query),
+    ]);
 
     return NextResponse.json(
       {
         success: true,
-        data: ads.map((ad) => ({
-          id: ad._id.toString(),
-          title: ad.title,
-          category: ad.category,
-          price: ad.price,
-          location: ad.location,
-          status: ad.status,
-          views: ad.views,
-          user: {
-            id: (ad.userId as { _id: { toString: () => string } })._id.toString(),
-            name: (ad.userId as { name?: string })?.name || "Неизвестно",
-            email: (ad.userId as { email?: string })?.email || "",
-          },
-          createdAt: ad.createdAt,
-        })),
+        data: reviews.map((review) => {
+          const userIdObj = review.userId as { _id?: { toString: () => string } | string; name?: string; email?: string; avatar?: string };
+          const adIdObj = review.adId as { _id?: { toString: () => string } | string; title?: string };
+          
+          return {
+            id: review._id.toString(),
+            userId: {
+              id: typeof userIdObj._id === 'object' ? userIdObj._id.toString() : userIdObj._id || "",
+              name: userIdObj.name || "",
+              email: userIdObj.email || "",
+              avatar: userIdObj.avatar || null,
+            },
+            adId: {
+              id: typeof adIdObj._id === 'object' ? adIdObj._id.toString() : adIdObj._id || "",
+              title: adIdObj.title || "",
+            },
+            rating: review.rating,
+            comment: review.comment,
+            createdAt: review.createdAt,
+          };
+        }),
         pagination: {
           page,
           limit,
@@ -94,12 +97,12 @@ export async function GET(request: NextRequest) {
     );
   } catch (error: unknown) {
     const err = error as Error;
-    console.error("Get admin ads error:", err);
+    console.error("Get reviews error:", err);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Ошибка при получении объявлений",
+        message: "Ошибка при получении отзывов",
         error: process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }

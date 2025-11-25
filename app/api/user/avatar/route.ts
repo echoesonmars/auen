@@ -22,6 +22,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Валидация формата userId (должен быть валидный ObjectId)
+    const mongoose = (await import("mongoose")).default;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Некорректный формат ID пользователя",
+          errors: { userId: "ID пользователя имеет неверный формат" },
+        },
+        { status: 400 }
+      );
+    }
+
     if (!file) {
       return NextResponse.json(
         {

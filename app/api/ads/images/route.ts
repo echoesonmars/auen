@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -38,17 +42,21 @@ export async function POST(request: NextRequest) {
 
     const uploadedImages: string[] = [];
 
+    const skippedFiles: string[] = [];
+    
     // Загружаем каждый файл
     for (const file of files) {
       // Проверка типа файла
       const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
       if (!validTypes.includes(file.type)) {
+        skippedFiles.push(`${file.name} (недопустимый тип: ${file.type})`);
         continue; // Пропускаем недопустимые файлы
       }
 
       // Проверка размера файла (максимум 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
+        skippedFiles.push(`${file.name} (размер превышает 5MB)`);
         continue; // Пропускаем слишком большие файлы
       }
 
@@ -74,10 +82,16 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           message: "Не удалось загрузить изображения. Проверьте формат и размер файлов.",
+          errors: skippedFiles.length > 0 ? { files: skippedFiles.join(", ") } : undefined,
         },
         { status: 400 }
       );
     }
+    
+    // Предупреждение, если некоторые файлы были пропущены
+    const warning = skippedFiles.length > 0 
+      ? `Загружено ${uploadedImages.length} из ${files.length} файлов. Пропущено: ${skippedFiles.join(", ")}`
+      : undefined;
 
     return NextResponse.json(
       {
@@ -85,13 +99,15 @@ export async function POST(request: NextRequest) {
         data: {
           images: uploadedImages,
         },
-        message: "Изображения успешно загружены",
+        message: warning || "Изображения успешно загружены",
+        warning: warning || undefined,
       },
       { status: 200 }
     );
   } catch (error: unknown) {
     const err = error as Error;
     console.error("Image upload error:", err);
+    console.error("Error stack:", err.stack);
 
     return NextResponse.json(
       {

@@ -61,10 +61,12 @@
         "description": "Статус объявления: active (активно), inactive (неактивно), sold (продано), pending (на модерации), rejected (отклонено)"
       },
       "createdAt": {
-        "bsonType": "date"
+        "bsonType": "date",
+        "description": "Дата создания объявления"
       },
       "updatedAt": {
-        "bsonType": "date"
+        "bsonType": "date",
+        "description": "Дата последнего обновления"
       }
     }
   }

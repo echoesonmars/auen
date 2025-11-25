@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 
 interface UserInfo {
   id: string;
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const router = useRouter();
   const { logout } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadUserData();
@@ -147,13 +149,13 @@ export default function ProfilePage() {
 
                               if (result.success && result.data.avatar) {
                                 setUserInfo({ ...userInfo, avatar: result.data.avatar });
-                                alert("Аватар успешно загружен");
+                                showToast("Аватар успешно загружен", "success");
                               } else {
-                                alert(result.message || "Ошибка при загрузке аватара");
+                                showToast(result.message || "Ошибка при загрузке аватара", "error");
                               }
                             } catch (error) {
                               console.error("Error uploading avatar:", error);
-                              alert("Ошибка при загрузке аватара");
+                              showToast("Ошибка при загрузке аватара", "error");
                             } finally {
                               setIsUploadingAvatar(false);
                               // Сбрасываем input, чтобы можно было загрузить тот же файл снова
@@ -287,7 +289,7 @@ export default function ProfilePage() {
 
                       // Обработка ошибки авторизации
                       if (response.status === 401) {
-                        alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+                        showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
                         router.push("/login");
                         return;
                       }
@@ -296,18 +298,18 @@ export default function ProfilePage() {
 
                       if (result.success) {
                         setUserInfo(result.data);
-                        alert("Профиль успешно обновлен");
+                        showToast("Профиль успешно обновлен", "success");
                       } else {
                         if (result.message?.includes("авторизац")) {
-                          alert("Сессия истекла. Пожалуйста, войдите в систему снова.");
+                          showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
                           router.push("/login");
                         } else {
-                          alert("Ошибка: " + (result.message || "Неизвестная ошибка"));
+                          showToast("Ошибка: " + (result.message || "Неизвестная ошибка"), "error");
                         }
                       }
                     } catch (error) {
                       console.error("Error updating profile:", error);
-                      alert("Ошибка при обновлении профиля");
+                      showToast("Ошибка при обновлении профиля", "error");
                     } finally {
                       setIsSaving(false);
                     }

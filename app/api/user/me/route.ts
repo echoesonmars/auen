@@ -23,6 +23,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Валидация формата userId (должен быть валидный ObjectId)
+    const mongoose = (await import("mongoose")).default;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Некорректный формат ID пользователя",
+          errors: { userId: "ID пользователя имеет неверный формат" },
+        },
+        { status: 400 }
+      );
+    }
+
     const user = await User.findById(userId).select("-password");
 
     if (!user) {
@@ -32,6 +45,18 @@ export async function GET(request: NextRequest) {
           message: "Пользователь не найден",
         },
         { status: 404 }
+      );
+    }
+
+    // Проверка блокировки
+    if (user.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Ваш аккаунт заблокирован",
+          isBlocked: true,
+        },
+        { status: 403 }
       );
     }
 

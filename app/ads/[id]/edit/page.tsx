@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
+import { useToast } from "@/components/ui/toast";
 import RichTextEditor from "@/app/components/RichTextEditor";
 
 export default function EditAdPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
@@ -13,6 +14,7 @@ export default function EditAdPage({ params }: { params: Promise<{ id: string }>
   const id = resolvedParams.id;
 
   const router = useRouter();
+  const { showToast } = useToast();
 
   // Проверка авторизации при загрузке страницы
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function EditAdPage({ params }: { params: Promise<{ id: string }>
 
         // Проверка, что пользователь является владельцем
         if (ad.userId?._id?.toString() !== userId && ad.userId?.toString() !== userId) {
-          alert("У вас нет прав на редактирование этого объявления");
+          showToast("У вас нет прав на редактирование этого объявления", "error");
           router.push(`/ads/${id}`);
           return;
         }
@@ -238,8 +240,10 @@ export default function EditAdPage({ params }: { params: Promise<{ id: string }>
       }
 
       // Успешно обновлено
-      alert("Объявление успешно обновлено!");
-      router.push(`/ads/${id}`);
+      showToast("Объявление успешно обновлено!", "success");
+      setTimeout(() => {
+        router.push(`/ads/${id}`);
+      }, 1000);
     } catch (error: unknown) {
       const err = error as Error;
       console.error("Error updating ad:", err);
