@@ -10,6 +10,12 @@ export interface IUser extends Document {
   avatar?: string;
   role: "user" | "admin" | "moderator";
   isBlocked: boolean;
+  bio?: string;
+  website?: string;
+  instagram?: string;
+  telegram?: string;
+  vk?: string;
+  youtube?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -76,6 +82,56 @@ const UserSchema: Schema = new Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+    bio: {
+      type: String,
+      maxlength: [500, "Описание не должно превышать 500 символов"],
+      trim: true,
+    },
+    website: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^https?:\/\/.+/.test(v);
+        },
+        message: "Некорректный URL сайта",
+      },
+    },
+    instagram: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^[a-zA-Z0-9._]+$/.test(v);
+        },
+        message: "Некорректный username Instagram",
+      },
+    },
+    telegram: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^[a-zA-Z0-9_]+$/.test(v);
+        },
+        message: "Некорректный username Telegram",
+      },
+    },
+    vk: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^[a-zA-Z0-9._]+$/.test(v);
+        },
+        message: "Некорректный username VK",
+      },
+    },
+    youtube: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^[a-zA-Z0-9._-]+$/.test(v);
+        },
+        message: "Некорректный username YouTube",
+      },
     },
   },
   {

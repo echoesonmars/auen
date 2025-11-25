@@ -42,13 +42,23 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { status } = body;
+    const { status, featured } = body;
 
-    if (!status || !["active", "inactive", "rejected", "pending"].includes(status)) {
+    const updateData: { status?: string; featured?: boolean } = {};
+    
+    if (status && ["active", "inactive", "rejected", "pending"].includes(status)) {
+      updateData.status = status;
+    }
+    
+    if (typeof featured === "boolean") {
+      updateData.featured = featured;
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "Некорректный статус",
+          message: "Необходимо указать status или featured",
         },
         { status: 400 }
       );
@@ -56,7 +66,7 @@ export async function PATCH(
 
     const ad = await Ad.findByIdAndUpdate(
       id,
-      { status },
+      updateData,
       { new: true }
     ).populate("userId", "name email").lean();
 
@@ -77,8 +87,9 @@ export async function PATCH(
           id: ad._id.toString(),
           title: ad.title,
           status: ad.status,
+          featured: ad.featured,
         },
-        message: "Статус объявления обновлен",
+        message: "Объявление обновлено",
       },
       { status: 200 }
     );

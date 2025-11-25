@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
           location: ad.location,
           status: ad.status,
           views: ad.views,
+          featured: ad.featured || false,
           user: {
             id: (ad.userId as { _id: { toString: () => string } })._id.toString(),
             name: (ad.userId as { name?: string })?.name || "Неизвестно",

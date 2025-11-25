@@ -13,10 +13,7 @@ const ChatSchema: Schema = new Schema(
       type: [Schema.Types.ObjectId],
       ref: "User",
       required: true,
-      validate: {
-        validator: (v: mongoose.Types.ObjectId[]) => v.length === 2,
-        message: "Чат должен содержать ровно 2 участника",
-      },
+      // Валидация выполняется вручную в API перед созданием
     },
     lastMessage: {
       type: Schema.Types.ObjectId,

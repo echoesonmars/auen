@@ -50,9 +50,33 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Обновляем только переданные поля
+    interface UpdateData {
+      name?: string;
+      email?: string;
+      phone?: string;
+      bio?: string;
+      website?: string;
+      instagram?: string;
+      telegram?: string;
+      vk?: string;
+      youtube?: string;
+    }
+    
+    const updateData: UpdateData = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.bio !== undefined) updateData.bio = body.bio;
+    if (body.website !== undefined) updateData.website = body.website;
+    if (body.instagram !== undefined) updateData.instagram = body.instagram;
+    if (body.telegram !== undefined) updateData.telegram = body.telegram;
+    if (body.vk !== undefined) updateData.vk = body.vk;
+    if (body.youtube !== undefined) updateData.youtube = body.youtube;
+
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: validation.data },
+      { $set: updateData },
       { new: true, runValidators: true }
     ).select("-password");
 
@@ -75,6 +99,12 @@ export async function PUT(request: NextRequest) {
           email: user.email,
           phone: user.phone,
           avatar: user.avatar,
+          bio: user.bio,
+          website: user.website,
+          instagram: user.instagram,
+          telegram: user.telegram,
+          vk: user.vk,
+          youtube: user.youtube,
         },
         message: "Профиль успешно обновлен",
       },

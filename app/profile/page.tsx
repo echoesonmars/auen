@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
+import BookingsTab from "./BookingsTab";
 
 interface UserInfo {
   id: string;
@@ -12,6 +13,12 @@ interface UserInfo {
   email: string;
   phone: string;
   avatar?: string;
+  bio?: string;
+  website?: string;
+  instagram?: string;
+  telegram?: string;
+  vk?: string;
+  youtube?: string;
 }
 
 interface Ad {
@@ -25,7 +32,7 @@ interface Ad {
 }
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<"info" | "ads" | "settings">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "ads" | "bookings" | "settings">("info");
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [myAds, setMyAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,6 +186,83 @@ export default function ProfilePage() {
                       {userInfo.phone && (
                         <p className="text-color-medium mb-1">{userInfo.phone}</p>
                       )}
+                      {userInfo.bio && (
+                        <p className="text-color-medium mb-3 mt-2 text-sm">{userInfo.bio}</p>
+                      )}
+                      {/* Social Links */}
+                      {(userInfo.website || userInfo.instagram || userInfo.telegram || userInfo.vk || userInfo.youtube) && (
+                        <div className="flex flex-wrap gap-3 mt-3">
+                          {userInfo.website && (
+                            <a
+                              href={userInfo.website.startsWith('http') ? userInfo.website : `https://${userInfo.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-color-lightest hover:bg-color-light transition-colors text-sm text-color-dark"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                              </svg>
+                              Сайт
+                            </a>
+                          )}
+                          {userInfo.instagram && (
+                            <a
+                              href={`https://instagram.com/${userInfo.instagram}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-colors text-sm text-white"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" fill="white"></path>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="white" strokeWidth="2"></line>
+                              </svg>
+                              Instagram
+                            </a>
+                          )}
+                          {userInfo.telegram && (
+                            <a
+                              href={`https://t.me/${userInfo.telegram}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors text-sm text-white"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.169 0-.315.06-.45.151l-1.718 1.403-1.403 2.315c-.06.113-.113.225-.113.338 0 .151.075.302.188.377l1.5 1.125c.075.075.188.113.301.113.075 0 .15-.038.225-.075l2.25-.75c.113-.038.188-.15.188-.263l.375-2.25c.038-.113-.038-.225-.15-.263l-1.875-.75c-.038 0-.113-.038-.188-.038zm-5.25 3.375l-1.875 3.188c-.038.075-.113.113-.188.113-.075 0-.15-.038-.188-.113l-1.875-3.188c-.038-.075-.038-.15 0-.225l1.875-3.188c.038-.075.113-.113.188-.113.075 0 .15.038.188.113l1.875 3.188c.038.075.038.15 0 .225z"></path>
+                              </svg>
+                              Telegram
+                            </a>
+                          )}
+                          {userInfo.vk && (
+                            <a
+                              href={`https://vk.com/${userInfo.vk}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-sm text-white"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12.785 16.241s.287-.029.434-.174c.135-.135.131-.388.131-.388s-.02-1.126.577-1.292c.591-.17 1.35.895 2.152 1.29.604.295 1.062.23 1.062.23l2.15-.03s1.123-.072.59-.956c-.044-.072-.308-.64-1.583-1.81-1.339-1.24-1.16-1.04.453-3.188.984-1.31 1.377-2.11 1.253-2.451-.117-.32-.84-.235-.84-.235l-2.405.015s-.178-.025-.31.055c-.13.077-.214.257-.214.257s-.385 1.02-.897 1.889c-1.082 1.699-1.515 1.79-1.692 1.685-.41-.247-.308-1.001-.308-1.533 0-1.667.25-2.36-.49-2.54-.246-.06-.427-.1-1.057-.106-.81-.008-1.496.003-1.884.166-.259.11-.458.355-.337.369.15.018.49.028.67.46.23.55.226 1.78.226 1.78s.135 1.98-1.57 2.226c-.31.044-.54.08-.68.163-.35.21-.247.68-.247 1.19 0 1.36.404 1.58.404 1.58s.15.09.15.27c0 .28-.15.35-.15.35s-.15.09-.15.27c0 .28.15.35.15.35s.15.09.15.27c0 .28-.15.35-.15.35z"></path>
+                              </svg>
+                              VK
+                            </a>
+                          )}
+                          {userInfo.youtube && (
+                            <a
+                              href={`https://youtube.com/@${userInfo.youtube}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 transition-colors text-sm text-white"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"></path>
+                              </svg>
+                              YouTube
+                            </a>
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={logout}
                         className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
@@ -232,6 +316,16 @@ export default function ProfilePage() {
                 }`}
               >
                 Мои объявления
+              </button>
+              <button
+                onClick={() => setActiveTab("bookings")}
+                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                  activeTab === "bookings"
+                    ? "border-color-medium text-color-dark"
+                    : "border-transparent text-color-medium hover:text-color-dark"
+                }`}
+              >
+                Мои бронирования
               </button>
               <button
                 onClick={() => setActiveTab("settings")}
@@ -415,13 +509,181 @@ export default function ProfilePage() {
             </BlurFade>
           )}
 
+          {activeTab === "bookings" && (
+            <BlurFade inView={true} delay={0.4} direction="up">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sm:p-8">
+                <BookingsTab />
+              </div>
+            </BlurFade>
+          )}
+
           {activeTab === "settings" && (
             <BlurFade inView={true} delay={0.4} direction="up">
               <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sm:p-8">
                 <h3 className="text-xl sm:text-2xl font-bold text-color-dark mb-6">
-                  Настройки
+                  Настройки профиля
                 </h3>
-                <div className="space-y-6">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setIsSaving(true);
+
+                    const formData = new FormData(e.currentTarget);
+                    const updateData = {
+                      name: formData.get("name"),
+                      email: formData.get("email"),
+                      phone: formData.get("phone"),
+                      bio: formData.get("bio"),
+                      website: formData.get("website"),
+                      instagram: formData.get("instagram"),
+                      telegram: formData.get("telegram"),
+                      vk: formData.get("vk"),
+                      youtube: formData.get("youtube"),
+                      userId: userInfo?.id,
+                    };
+
+                    try {
+                      const response = await fetch("/api/user/profile", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updateData),
+                      });
+
+                      if (response.status === 401) {
+                        showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
+                        router.push("/login");
+                        return;
+                      }
+
+                      const result = await response.json();
+
+                      if (result.success) {
+                        setUserInfo(result.data);
+                        showToast("Профиль успешно обновлен", "success");
+                      } else {
+                        if (result.message?.includes("авторизац")) {
+                          showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
+                          router.push("/login");
+                        } else {
+                          showToast("Ошибка: " + (result.message || "Неизвестная ошибка"), "error");
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error updating profile:", error);
+                      showToast("Ошибка при обновлении профиля", "error");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-color-dark mb-2">
+                      Описание профиля
+                    </label>
+                    <textarea
+                      name="bio"
+                      defaultValue={userInfo?.bio || ""}
+                      maxLength={500}
+                      rows={4}
+                      placeholder="Расскажите о себе..."
+                      className="w-full px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark resize-none"
+                    />
+                    <p className="text-xs text-color-medium mt-1">Максимум 500 символов</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-color-dark mb-2">
+                      Сайт
+                    </label>
+                    <input
+                      type="url"
+                      name="website"
+                      defaultValue={userInfo?.website || ""}
+                      placeholder="https://example.com"
+                      className="w-full px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-color-dark mb-2">
+                        Instagram
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-color-medium">@</span>
+                        <input
+                          type="text"
+                          name="instagram"
+                          defaultValue={userInfo?.instagram || ""}
+                          placeholder="username"
+                          className="flex-1 px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-color-dark mb-2">
+                        Telegram
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-color-medium">@</span>
+                        <input
+                          type="text"
+                          name="telegram"
+                          defaultValue={userInfo?.telegram || ""}
+                          placeholder="username"
+                          className="flex-1 px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-color-dark mb-2">
+                        VK
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-color-medium">vk.com/</span>
+                        <input
+                          type="text"
+                          name="vk"
+                          defaultValue={userInfo?.vk || ""}
+                          placeholder="username"
+                          className="flex-1 px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-color-dark mb-2">
+                        YouTube
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-color-medium">@</span>
+                        <input
+                          type="text"
+                          name="youtube"
+                          defaultValue={userInfo?.youtube || ""}
+                          placeholder="username"
+                          className="flex-1 px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-color-light">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="bg-color-medium text-white px-6 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSaving ? "Сохранение..." : "Сохранить изменения"}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="mt-8 pt-6 border-t border-color-light space-y-6">
+                  <h4 className="text-lg font-bold text-color-dark mb-4">Уведомления</h4>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-color-dark">Уведомления по email</p>

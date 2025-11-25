@@ -12,10 +12,11 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // Проверяем права администратора
+  // Проверяем права администратора и загружаем непрочитанные сообщения
   useEffect(() => {
     const checkAdmin = async () => {
       if (isAuthenticated) {
@@ -35,6 +36,77 @@ export default function Navbar() {
     };
 
     checkAdmin();
+  }, [isAuthenticated]);
+
+  // Загружаем количество непрочитанных сообщений
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (!isAuthenticated) {
+        setUnreadCount(0);
+        return;
+      }
+
+      try {
+        const userId = localStorage.getItem("userId");
+        if (!userId) {
+          setUnreadCount(0);
+          return;
+        }
+
+        // Используем cache: 'no-store' чтобы всегда получать свежие данные
+        const response = await fetch(`/api/chats?userId=${userId}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // Суммируем все непрочитанные сообщения из всех чатов
+          const totalUnread = result.data.reduce((sum: number, chat: { unread: number }) => {
+            return sum + (chat.unread || 0);
+          }, 0);
+          console.log(`Navbar: Total unread count updated to ${totalUnread}`);
+          setUnreadCount(totalUnread);
+        } else {
+          setUnreadCount(0);
+        }
+      } catch (error) {
+        console.error("Error loading unread count:", error);
+        setUnreadCount(0);
+      }
+    };
+
+    loadUnreadCount();
+
+    // Обновляем при событии обновления чатов - МНОЖЕСТВЕННЫЕ ОБНОВЛЕНИЯ
+    const handleChatsUpdated = () => {
+      console.log("Navbar: chatsUpdated event received, updating count...");
+      // Немедленное обновление
+      loadUnreadCount();
+      // Обновления с задержками для надежности
+      setTimeout(() => {
+        loadUnreadCount();
+      }, 100);
+      setTimeout(() => {
+        loadUnreadCount();
+      }, 300);
+      setTimeout(() => {
+        loadUnreadCount();
+      }, 600);
+      setTimeout(() => {
+        loadUnreadCount();
+      }, 1000);
+    };
+    window.addEventListener("chatsUpdated", handleChatsUpdated);
+
+    // Обновляем каждые 2 секунды для более быстрого обновления
+    const interval = setInterval(loadUnreadCount, 2000);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("chatsUpdated", handleChatsUpdated);
+    };
   }, [isAuthenticated]);
 
   const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -125,7 +197,11 @@ export default function Navbar() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
               </svg>
               <span className="hidden lg:inline">Сообщения</span>
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
 
             {/* Profile */}
@@ -296,7 +372,11 @@ export default function Navbar() {
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
                     Сообщения
-                    <span className="absolute top-1 right-3 w-2 h-2 bg-red-500 rounded-full"></span>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 </motion.div>
 

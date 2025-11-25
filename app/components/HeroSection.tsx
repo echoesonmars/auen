@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { Highlighter } from "@/components/ui/highlighter";
 import { BlurFade } from "@/components/ui/blur-fade";
@@ -18,37 +19,89 @@ export default function HeroSection() {
   const locationRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // Примерные карточки товаров с рекламой
-  const featuredCards = [
+  const [featuredCards, setFeaturedCards] = useState<Array<{
+    id: string;
+    title: string;
+    location: string;
+    price: string;
+    image: string;
+    adId?: string;
+  }>>([
     {
-      id: 1,
+      id: "1",
       title: "Гитара Fender",
       location: "Алматы",
       price: "5000₸/день",
       image: "🎸",
     },
     {
-      id: 2,
+      id: "2",
       title: "Студия звукозаписи",
       location: "Астана",
       price: "15000₸/час",
       image: "🎙️",
     },
     {
-      id: 3,
+      id: "3",
       title: "DJ оборудование",
       location: "Шымкент",
       price: "8000₸/день",
       image: "🎧",
     },
     {
-      id: 4,
+      id: "4",
       title: "Барабанная установка",
       location: "Караганда",
       price: "6000₸/день",
       image: "🥁",
     },
-  ];
+  ]);
+
+  // Загружаем featured объявления из базы данных
+  useEffect(() => {
+    const loadFeaturedAds = async () => {
+      try {
+        const response = await fetch("/api/ads?featured=true&limit=4");
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.length > 0) {
+          const categoryIcons: Record<string, string> = {
+            "Инструменты": "🎸",
+            "Студии": "🎙️",
+            "DJ оборудование": "🎧",
+            "Клавишные": "🎹",
+            "Микрофоны": "🎤",
+            "Аудио": "🔊",
+          };
+          
+          const cards = result.data.map((ad: {
+            _id: string;
+            title: string;
+            location: string;
+            price: string;
+            category: string;
+            images?: string[];
+          }) => ({
+            id: ad._id,
+            title: ad.title,
+            location: ad.location,
+            price: ad.price,
+            image: ad.images && ad.images.length > 0 
+              ? ad.images[0] 
+              : categoryIcons[ad.category] || "🎵",
+            adId: ad._id,
+          }));
+          
+          setFeaturedCards(cards);
+        }
+      } catch (error) {
+        console.error("Error loading featured ads:", error);
+        // Используем дефолтные карточки при ошибке
+      }
+    };
+    
+    loadFeaturedAds();
+  }, []);
 
   const cities = [
     "Алматы",
@@ -210,18 +263,45 @@ export default function HeroSection() {
                         : "opacity-0 translate-x-full"
                     }`}
                   >
-                    <div className="bg-white rounded-2xl border border-color-light p-6 h-full flex flex-col justify-between transition-all duration-300 hover:scale-[1.02]" style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}>
-                      <div>
-                        <div className="text-5xl mb-4 flex-shrink-0 leading-none" style={{ minHeight: '3rem' }}>{card.image}</div>
-                        <h3 className="text-xl font-bold text-color-dark mb-2">
-                          {card.title}
-                        </h3>
-                        <p className="text-color-medium text-sm mb-4">{card.location}</p>
-                      </div>
-                      <div className="text-2xl font-bold text-color-medium">
-                        {card.price}
-                      </div>
-                    </div>
+                    <Link
+                      href={card.adId ? `/ads/${card.adId}` : '#'}
+                      className="relative rounded-2xl border-2 border-white overflow-hidden h-full transition-all duration-300 hover:scale-[1.02] cursor-pointer block"
+                      style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}
+                    >
+                      {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
+                        <>
+                          <img 
+                            src={card.image} 
+                            alt={card.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full bg-color-lightest flex items-center justify-center text-4xl">🎵</div>';
+                              }
+                            }}
+                          />
+                          {/* Темный градиент снизу */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                          {/* Текст поверх градиента */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                            <h3 className="text-xl font-bold mb-2">
+                              {card.title}
+                            </h3>
+                            <p className="text-sm mb-2 opacity-90">{card.location}</p>
+                            <div className="text-2xl font-bold">
+                              {card.price}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-color-lightest flex items-center justify-center">
+                          <div className="text-5xl">{card.image || "🎵"}</div>
+                        </div>
+                      )}
+                    </Link>
                   </BlurFade>
                 ))}
                 {/* Carousel indicators */}
@@ -455,18 +535,45 @@ export default function HeroSection() {
                         : "opacity-0 translate-x-full"
                     }`}
                   >
-                    <div className="bg-white rounded-2xl border border-color-light p-6 h-full flex flex-col justify-between transition-all duration-300 hover:scale-[1.02]" style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}>
-                      <div>
-                        <div className="text-5xl mb-4 flex-shrink-0 leading-none" style={{ minHeight: '3rem' }}>{card.image}</div>
-                        <h3 className="text-xl font-bold text-color-dark mb-2">
-                          {card.title}
-                        </h3>
-                        <p className="text-color-medium text-sm mb-4">{card.location}</p>
-                      </div>
-                      <div className="text-2xl font-bold text-color-medium">
-                        {card.price}
-                      </div>
-                    </div>
+                    <Link
+                      href={card.adId ? `/ads/${card.adId}` : '#'}
+                      className="relative rounded-2xl border-2 border-white overflow-hidden h-full transition-all duration-300 hover:scale-[1.02] block"
+                      style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}
+                    >
+                      {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
+                        <>
+                          <img 
+                            src={card.image} 
+                            alt={card.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full bg-color-lightest flex items-center justify-center text-4xl">🎵</div>';
+                              }
+                            }}
+                          />
+                          {/* Темный градиент снизу */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                          {/* Текст поверх градиента */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                            <h3 className="text-xl font-bold mb-2">
+                              {card.title}
+                            </h3>
+                            <p className="text-sm mb-2 opacity-90">{card.location}</p>
+                            <div className="text-2xl font-bold">
+                              {card.price}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-color-lightest flex items-center justify-center">
+                          <div className="text-5xl">{card.image || "🎵"}</div>
+                        </div>
+                      )}
+                    </Link>
                   </div>
                 ))}
               {/* Carousel indicators */}

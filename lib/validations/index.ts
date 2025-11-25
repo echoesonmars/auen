@@ -2,7 +2,7 @@ import { z } from "zod";
 import { registerSchema, loginSchema, updateProfileSchema } from "./user";
 import { createAdSchema, updateAdSchema } from "./ad";
 import { createMessageSchema } from "./message";
-import { createReviewSchema } from "./review";
+import { createReviewSchema, updateReviewSchema } from "./review";
 
 // Экспорт всех схем
 export {
@@ -13,6 +13,7 @@ export {
   updateAdSchema,
   createMessageSchema,
   createReviewSchema,
+  updateReviewSchema,
 };
 
 // Утилита для валидации с обработкой ошибок

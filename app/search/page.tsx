@@ -153,7 +153,7 @@ function SearchPageContent() {
   };
 
   const renderCategoriesContent = (options?: { className?: string; onSelect?: () => void }) => (
-    <div className={`bg-white rounded-2xl border border-color-light p-6 ${options?.className || ""}`}>
+    <div className={`bg-white rounded-xl sm:rounded-2xl border border-color-light p-4 sm:p-6 ${options?.className || ""}`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-color-dark">Категории</h3>
         {(selectedCategory || selectedSubcategory) && (
@@ -262,7 +262,7 @@ function SearchPageContent() {
       {/* Search Header */}
       <BlurFade inView={true} delay={0.1} direction="down">
         <div className="bg-white border-b border-color-light sticky top-16 z-40">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <form onSubmit={handleSearch}>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 {/* Search input */}
@@ -386,8 +386,8 @@ function SearchPageContent() {
       </BlurFade>
 
       {/* Main Content */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           {/* Categories Sidebar */}
           <aside className="lg:col-span-1 hidden lg:block">
             <BlurFade inView={true} delay={0.2} direction="up">
@@ -399,7 +399,7 @@ function SearchPageContent() {
           <div className="lg:col-span-3">
             {/* Sort and Filters */}
             <BlurFade inView={true} delay={0.3} direction="up">
-              <div className="bg-white rounded-2xl border border-color-light p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-white rounded-xl sm:rounded-2xl border border-color-light p-3 sm:p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="text-color-dark w-full">
                   <span className="font-semibold">Найдено: </span>
                   <span className="text-color-medium">{ads.length} объявлений</span>
@@ -450,15 +450,15 @@ function SearchPageContent() {
                 </div>
               </BlurFade>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                 {ads.map((ad, index) => (
                   <BlurFade key={ad._id} inView={true} delay={0.1 * (index % 6)} direction="up">
                     <Link
                       href={`/ads/${ad._id}`}
-                      className="bg-white rounded-2xl border border-color-light overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block"
+                      className="bg-white rounded-xl sm:rounded-2xl border border-color-light overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block"
                       style={{ boxShadow: '0 4px 20px rgba(63, 114, 175, 0.1)' }}
                     >
-                      <div className="aspect-video bg-color-lightest flex items-center justify-center overflow-hidden relative">
+                      <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative">
                         {ad.images && ad.images.length > 0 && ad.images[0] ? (
                           <img
                             src={ad.images[0]}
@@ -471,23 +471,23 @@ function SearchPageContent() {
                               const parent = target.parentElement;
                               if (parent) {
                                 const icon = document.createElement("div");
-                                icon.className = "text-6xl";
+                                icon.className = "text-5xl sm:text-6xl";
                                 icon.textContent = getCategoryIcon(ad.category);
                                 parent.appendChild(icon);
                               }
                             }}
                           />
                         ) : (
-                          <div className="text-6xl">{getCategoryIcon(ad.category)}</div>
+                          <div className="text-5xl sm:text-6xl">{getCategoryIcon(ad.category)}</div>
                         )}
                       </div>
-                      <div className="p-4 sm:p-6">
-                        <h3 className="text-lg font-bold text-color-dark mb-2 line-clamp-2">
+                      <div className="p-3 sm:p-4">
+                        <h3 className="text-base sm:text-lg font-bold text-color-dark mb-1.5 sm:mb-2 line-clamp-2">
                           {ad.title}
                         </h3>
-                        <p className="text-sm text-color-medium mb-3">{ad.location}</p>
+                        <p className="text-xs sm:text-sm text-color-medium mb-2 sm:mb-3">{ad.location}</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-xl font-bold text-color-medium">{ad.price}</span>
+                          <span className="text-lg sm:text-xl font-bold text-color-medium">{ad.price}</span>
                           <span className="text-xs text-color-medium">👁 {ad.views || 0}</span>
                         </div>
                       </div>

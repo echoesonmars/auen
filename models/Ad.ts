@@ -1,5 +1,17 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface IBooking {
+  renterId: mongoose.Types.ObjectId;
+  startDate: Date;
+  endDate: Date;
+  startTime?: Date;
+  endTime?: Date;
+  period: "hour" | "day" | "week" | "month";
+  price: number;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  createdAt: Date;
+}
+
 export interface IAd extends Document {
   title: string;
   category: string;
@@ -10,6 +22,8 @@ export interface IAd extends Document {
   userId: mongoose.Types.ObjectId;
   views: number;
   status: "active" | "inactive" | "sold" | "pending" | "rejected";
+  bookings?: IBooking[];
+  featured?: boolean; // Для рекламной галереи на главной
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +104,51 @@ const AdSchema: Schema = new Schema(
         message: "Некорректный статус",
       },
       default: "pending", // Новые объявления требуют модерации
+      index: true,
+    },
+    bookings: {
+      type: [
+        {
+          renterId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          startDate: {
+            type: Date,
+            required: true,
+          },
+          endDate: {
+            type: Date,
+            required: true,
+          },
+          startTime: Date,
+          endTime: Date,
+          period: {
+            type: String,
+            enum: ["hour", "day", "week", "month"],
+            required: true,
+          },
+          price: {
+            type: Number,
+            required: true,
+          },
+          status: {
+            type: String,
+            enum: ["pending", "approved", "rejected", "cancelled"],
+            default: "pending",
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
+    featured: {
+      type: Boolean,
+      default: false,
       index: true,
     },
   },

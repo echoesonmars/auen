@@ -31,10 +31,11 @@ export async function GET(
     // Увеличиваем счетчик просмотров
     await Ad.findByIdAndUpdate(id, { $inc: { views: 1 } });
 
-    // Убеждаемся, что images - это массив
+    // Убеждаемся, что images - это массив и bookings тоже
     const adData = {
       ...ad,
       images: ad.images || [],
+      bookings: ad.bookings || [],
     };
 
     return NextResponse.json(

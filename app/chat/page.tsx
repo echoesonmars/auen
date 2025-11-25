@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 
 interface Message {
@@ -25,6 +26,7 @@ interface Chat {
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { showToast } = useToast();
   // Чат с Auen AI всегда доступен
   const auenAIChatDefault: Chat = {
@@ -38,7 +40,13 @@ function ChatPageContent() {
   };
 
   // На мобилке по умолчанию показываем список чатов (null), на десктопе - чат с AI
-  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  // Восстанавливаем выбранный чат из sessionStorage при инициализации
+  const [selectedChat, setSelectedChat] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("selectedChat") || null;
+    }
+    return null;
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [chats, setChats] = useState<Chat[]>([auenAIChatDefault]);
@@ -46,6 +54,34 @@ function ChatPageContent() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [adInfo, setAdInfo] = useState<{ id: string; title: string } | null>(null);
+  const [receiverId, setReceiverId] = useState<string | null>(null);
+  const [showChatMenu, setShowChatMenu] = useState(false);
+
+  // Сохраняем выбранный чат в sessionStorage при изменении
+  useEffect(() => {
+    if (selectedChat) {
+      sessionStorage.setItem("selectedChat", selectedChat);
+    } else {
+      sessionStorage.removeItem("selectedChat");
+    }
+  }, [selectedChat]);
+
+  // Закрываем меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showChatMenu && !(event.target as Element).closest('.relative')) {
+        setShowChatMenu(false);
+      }
+    };
+
+    if (showChatMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showChatMenu]);
 
   // Определяем мобильное устройство
   useEffect(() => {
@@ -57,15 +93,33 @@ function ChatPageContent() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Устанавливаем начальный чат на десктопе
-  useEffect(() => {
-    if (!isMobile && !selectedChat && !searchParams.get("chatId") && !searchParams.get("userId")) {
-      setSelectedChat("auen-ai");
-    }
-  }, [isMobile, searchParams]);
+  // НЕ устанавливаем автоматически чат с AI при обновлении страницы
+  // Пользователь должен сам выбрать чат из списка
 
   useEffect(() => {
     const initChat = async () => {
+      // Проверяем авторизацию
+      const currentUserId = localStorage.getItem("userId");
+      if (!currentUserId) {
+        // Сохраняем параметры для редиректа после логина
+        const chatId = searchParams.get("chatId");
+        const adId = searchParams.get("adId");
+        const userIdParam = searchParams.get("userId");
+        
+        let redirectUrl = "/chat";
+        const params = new URLSearchParams();
+        if (chatId) params.set("chatId", chatId);
+        if (adId) params.set("adId", adId);
+        if (userIdParam) params.set("userId", userIdParam);
+        if (params.toString()) redirectUrl += "?" + params.toString();
+        
+        showToast("Необходима авторизация", "warning");
+        setTimeout(() => {
+          router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
+        }, 500);
+        return;
+      }
+
       const chatId = searchParams.get("chatId");
       const adId = searchParams.get("adId");
       const userIdParam = searchParams.get("userId");
@@ -88,36 +142,100 @@ function ChatPageContent() {
 
       // Если передан userId, создаем/находим чат
       if (userIdParam) {
-        const currentUserId = localStorage.getItem("userId");
-        if (currentUserId) {
-          try {
-            const chatResponse = await fetch("/api/chats", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: currentUserId,
-                receiverId: userIdParam,
-              }),
-            });
-            const chatResult = await chatResponse.json();
-            if (chatResult.success) {
-              // Перезагружаем чаты после создания
-              await loadChats();
-              setSelectedChat(chatResult.data.chatId);
-              // Если есть adId, добавляем сообщение о товаре
-              if (adId && adInfo) {
-                setTimeout(() => {
-                  setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
-                }, 500);
-              }
+        try {
+          console.log("Creating chat with userId:", currentUserId, "receiverId:", userIdParam);
+          const chatResponse = await fetch("/api/chats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: currentUserId,
+              receiverId: userIdParam,
+            }),
+          });
+
+          console.log("Chat response status:", chatResponse.status);
+          console.log("Chat response headers:", Object.fromEntries(chatResponse.headers.entries()));
+
+          // Проверяем Content-Type
+          const contentType = chatResponse.headers.get("content-type");
+          console.log("Content-Type:", contentType);
+
+          if (!chatResponse.ok) {
+            let errorText;
+            try {
+              errorText = await chatResponse.text();
+            } catch {
+              errorText = "Не удалось прочитать ответ сервера";
             }
-          } catch (error) {
-            console.error("Error creating chat:", error);
+            
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { message: "Ошибка сервера", raw: errorText.substring(0, 500) };
+            }
+            
+            console.error("========== CHAT CREATION ERROR ==========");
+            console.error("Status:", chatResponse.status);
+            console.error("Status Text:", chatResponse.statusText);
+            console.error("Error data:", errorData);
+            console.error("Full error text:", errorText.substring(0, 1000));
+            console.error("=========================================");
+            
+            const errorMessage = errorData.message || errorData.error || "Неизвестная ошибка";
+            showToast("Ошибка при создании чата: " + errorMessage, "error");
+            return;
           }
+
+          // Проверяем, что ответ является JSON
+          if (!contentType || !contentType.includes("application/json")) {
+            const text = await chatResponse.text();
+            console.error("Non-JSON response:", text.substring(0, 500));
+            showToast("Ошибка: сервер вернул неверный формат данных", "error");
+            return;
+          }
+
+          let chatResult;
+          try {
+            chatResult = await chatResponse.json();
+          } catch (jsonError) {
+            console.error("JSON parse error:", jsonError);
+            const text = await chatResponse.text();
+            console.error("Response text:", text.substring(0, 500));
+            showToast("Ошибка при обработке ответа сервера", "error");
+            return;
+          }
+          console.log("Chat result:", JSON.stringify(chatResult, null, 2));
+
+          if (chatResult.success) {
+            console.log("✓ Chat created/found successfully:", chatResult.data.chatId);
+            // Перезагружаем чаты после создания
+            await loadChats();
+            setSelectedChat(chatResult.data.chatId);
+            // Если есть adId, добавляем сообщение о товаре
+            if (adId && adInfo) {
+              setTimeout(() => {
+                setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
+              }, 500);
+            }
+          } else {
+            // Показываем ошибку пользователю
+            console.error("========== CHAT CREATION FAILED ==========");
+            console.error("Chat result:", JSON.stringify(chatResult, null, 2));
+            console.error("Message:", chatResult.message);
+            console.error("Error:", chatResult.error);
+            console.error("Error type:", chatResult.errorType);
+            console.error("==========================================");
+            showToast(chatResult.message || "Ошибка при создании чата", "error");
+          }
+        } catch (error) {
+          console.error("Error creating chat:", error);
+          showToast("Ошибка при создании чата", "error");
         }
       } else if (chatId) {
         // Если передан chatId, открываем его
         setSelectedChat(chatId);
+        sessionStorage.setItem("selectedChat", chatId);
         // Если есть adId, добавляем сообщение о товаре
         if (adId && adInfo) {
           setTimeout(() => {
@@ -125,11 +243,17 @@ function ChatPageContent() {
           }, 500);
         }
       } else {
-        // Обычная загрузка - на десктопе выбираем AI чат, на мобилке показываем список
-        if (!selectedChat && !isMobile) {
-          setSelectedChat("auen-ai");
+        // Обычная загрузка - НЕ устанавливаем автоматически чат с AI
+        // Пользователь сам выберет чат из списка
+        // Восстанавливаем выбранный чат из sessionStorage если он есть
+        const savedChat = sessionStorage.getItem("selectedChat");
+        if (savedChat && savedChat !== "auen-ai") {
+          // Проверяем, что сохраненный чат существует в списке (будет проверено после загрузки)
+          // Пока просто не устанавливаем ничего
         }
       }
+      
+      setLoading(false);
     };
 
     initChat();
@@ -139,6 +263,7 @@ function ChatPageContent() {
   useEffect(() => {
     if (selectedChat) {
       loadMessages(selectedChat);
+      // После загрузки сообщений счетчик обновится в loadMessages
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
@@ -175,7 +300,30 @@ function ChatPageContent() {
           if (result.success) {
             // Добавляем чат с Auen AI первым в списке
             const allChats = [auenAIChat, ...result.data];
+            
+            // Сохраняем текущий выбранный чат перед обновлением списка
+            const currentSelectedChat = selectedChat || sessionStorage.getItem("selectedChat");
+            
             setChats(allChats);
+            
+            // Восстанавливаем выбранный чат после обновления списка
+            // Это предотвращает переключение на AI чат при обновлении страницы
+            if (currentSelectedChat && currentSelectedChat !== "auen-ai") {
+              // Проверяем, что выбранный чат существует в новом списке
+              const chatExists = allChats.some(chat => chat.id === currentSelectedChat);
+              if (chatExists) {
+                // Чат существует, восстанавливаем его выбор
+                setSelectedChat(currentSelectedChat);
+                sessionStorage.setItem("selectedChat", currentSelectedChat);
+              } else {
+                // Чат не найден, очищаем выбор (пользователь выберет сам)
+                setSelectedChat(null);
+                sessionStorage.removeItem("selectedChat");
+              }
+            }
+            
+            // Обновляем непрочитанные в навбаре
+            window.dispatchEvent(new Event("chatsUpdated"));
           } else {
             // Если API вернул ошибку, показываем только чат с AI
             if (result.message?.includes("авторизац")) {
@@ -194,13 +342,11 @@ function ChatPageContent() {
         setChats([auenAIChat]);
       }
 
-      // Если нет выбранного чата и это не мобилка, выбираем чат с AI
-      if (!selectedChat && !isMobile) {
-        setSelectedChat("auen-ai");
-      }
+      // НЕ устанавливаем автоматически чат с AI при обновлении страницы
+      // Пользователь должен сам выбрать чат из списка
     } catch (error) {
       console.error("Error loading chats:", error);
-      // В случае ошибки все равно показываем чат с AI
+      // В случае ошибки показываем только чат с AI
       const auenAIChat: Chat = {
         id: "auen-ai",
         name: "Auen AI",
@@ -211,13 +357,13 @@ function ChatPageContent() {
         isAI: true,
       };
       setChats([auenAIChat]);
-      if (!selectedChat && !isMobile) {
-        setSelectedChat("auen-ai");
-      }
+      // НЕ устанавливаем автоматически чат с AI
     } finally {
       setLoading(false);
     }
   };
+
+  // Функция markMessagesAsRead удалена, так как сообщения помечаются автоматически в GET /api/chats/[chatId]/messages
 
   const loadMessages = async (chatId: string) => {
     try {
@@ -245,14 +391,32 @@ function ChatPageContent() {
       }
 
       const userId = localStorage.getItem("userId") || "";
+      
+      // Получаем информацию о собеседнике для обычных чатов
+      if (chatId !== "auen-ai") {
+        try {
+          const receiverResponse = await fetch(`/api/chats/${chatId}/receiver?userId=${userId}`);
+          if (receiverResponse.ok) {
+            const receiverResult = await receiverResponse.json();
+            if (receiverResult.success && receiverResult.data.receiverId) {
+              setReceiverId(receiverResult.data.receiverId);
+            }
+          }
+        } catch (error) {
+          console.error("Error loading receiver:", error);
+        }
+      }
+      
       const response = await fetch(`/api/chats/${chatId}/messages?userId=${userId}`);
       
       // Обработка ошибки авторизации
       if (response.status === 401) {
-        // Если ошибка авторизации и это не AI чат, переключаемся на AI чат
+        // Если ошибка авторизации и это не AI чат, НЕ переключаемся автоматически
+        // Пользователь должен сам выбрать чат
         if (chatId !== "auen-ai") {
-          setSelectedChat("auen-ai");
-          loadMessages("auen-ai");
+          // Просто очищаем выбранный чат
+          setSelectedChat(null);
+          sessionStorage.removeItem("selectedChat");
         }
         return;
       }
@@ -261,11 +425,48 @@ function ChatPageContent() {
 
       if (result.success) {
         setMessages(result.data);
+        // Сообщения уже помечены как прочитанные в GET /api/chats/[chatId]/messages
+        // СРАЗУ обновляем список чатов для получения актуальных счетчиков из БД
+        // Это важно - сначала обновляем из БД, потом сбрасываем локально
+        await loadChats();
+        // После обновления из БД сбрасываем счетчик для текущего чата в локальном состоянии
+        // Это гарантирует, что счетчик будет 0 даже если в БД еще не обновилось
+        setChats(prevChats => 
+          prevChats.map(chat => 
+            chat.id === chatId ? { ...chat, unread: 0 } : chat
+          )
+        );
+        // МНОЖЕСТВЕННЫЕ события для обновления навбара
+        window.dispatchEvent(new Event("chatsUpdated"));
+        setTimeout(() => {
+          window.dispatchEvent(new Event("chatsUpdated"));
+        }, 100);
+        // Дополнительные обновления для синхронизации с БД
+        setTimeout(async () => {
+          await loadChats();
+          // После обновления из БД снова сбрасываем счетчик для текущего чата
+          setChats(prevChats => 
+            prevChats.map(chat => 
+              chat.id === chatId ? { ...chat, unread: 0 } : chat
+            )
+          );
+          window.dispatchEvent(new Event("chatsUpdated"));
+        }, 300);
+        setTimeout(async () => {
+          await loadChats();
+          // После обновления из БД снова сбрасываем счетчик для текущего чата
+          setChats(prevChats => 
+            prevChats.map(chat => 
+              chat.id === chatId ? { ...chat, unread: 0 } : chat
+            )
+          );
+          window.dispatchEvent(new Event("chatsUpdated"));
+        }, 700);
       } else if (result.message?.includes("авторизац")) {
-        // Если ошибка авторизации и это не AI чат, переключаемся на AI чат
+        // Если ошибка авторизации и это не AI чат, НЕ переключаемся автоматически
         if (chatId !== "auen-ai") {
-          setSelectedChat("auen-ai");
-          loadMessages("auen-ai");
+          setSelectedChat(null);
+          sessionStorage.removeItem("selectedChat");
         }
       }
     } catch (error) {
@@ -360,9 +561,9 @@ function ChatPageContent() {
       // Обработка ошибки авторизации
       if (receiverResponse.status === 401) {
         showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
-        // Переключаемся на AI чат при ошибке авторизации
-        setSelectedChat("auen-ai");
-        loadMessages("auen-ai");
+        // НЕ переключаемся автоматически на AI чат
+        setSelectedChat(null);
+        sessionStorage.removeItem("selectedChat");
         setSending(false);
         return;
       }
@@ -372,8 +573,8 @@ function ChatPageContent() {
       if (!receiverResult.success || !receiverResult.data?.receiverId) {
         if (receiverResult.message?.includes("авторизац")) {
           showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
-          setSelectedChat("auen-ai");
-          loadMessages("auen-ai");
+          setSelectedChat(null);
+          sessionStorage.removeItem("selectedChat");
         } else {
           showToast("Не удалось определить получателя", "error");
         }
@@ -382,6 +583,9 @@ function ChatPageContent() {
       }
       
       const receiverId = receiverResult.data.receiverId;
+
+      console.log("Sending message to:", `/api/chats/${selectedChat}/messages`);
+      console.log("Message data:", { text: messageText, senderId: userId, receiverId });
 
       const response = await fetch(`/api/chats/${selectedChat}/messages`, {
         method: "POST",
@@ -393,29 +597,60 @@ function ChatPageContent() {
         }),
       });
 
+      console.log("Message response status:", response.status);
+
       // Обработка ошибки авторизации
       if (response.status === 401) {
         showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
-        setSelectedChat("auen-ai");
-        loadMessages("auen-ai");
+        setSelectedChat(null);
+        sessionStorage.removeItem("selectedChat");
+        setSending(false);
+        return;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: "Ошибка сервера", raw: errorText.substring(0, 500) };
+        }
+        
+        console.error("========== SEND MESSAGE ERROR ==========");
+        console.error("Status:", response.status);
+        console.error("Error data:", errorData);
+        console.error("Full error text:", errorText);
+        console.error("========================================");
+        
+        showToast("Ошибка при отправке сообщения: " + (errorData.message || "Неизвестная ошибка"), "error");
         setSending(false);
         return;
       }
 
       const result = await response.json();
+      console.log("Message result:", result);
       
       if (result.message?.includes("авторизац")) {
         showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
-        setSelectedChat("auen-ai");
-        loadMessages("auen-ai");
+        setSelectedChat(null);
+        sessionStorage.removeItem("selectedChat");
         setSending(false);
         return;
       }
 
       if (result.success) {
+        console.log("✓ Message sent successfully");
         setMessages([...messages, result.data]);
         setMessageInput("");
-        loadChats(); // Обновляем список чатов
+        // Обновляем список чатов после отправки сообщения
+        setTimeout(async () => {
+          await loadChats();
+          window.dispatchEvent(new Event("chatsUpdated"));
+        }, 100);
+      } else {
+        console.error("Message send failed:", result);
+        showToast(result.message || "Ошибка при отправке сообщения", "error");
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -444,7 +679,22 @@ function ChatPageContent() {
                   chats.map((chat) => (
                     <button
                       key={chat.id}
-                      onClick={() => setSelectedChat(chat.id)}
+                      onClick={() => {
+                        // СРАЗУ сбрасываем счетчик непрочитанных при клике на чат
+                        if (chat.id !== "auen-ai") {
+                          setChats(prevChats => 
+                            prevChats.map(c => 
+                              c.id === chat.id ? { ...c, unread: 0 } : c
+                            )
+                          );
+                          // МНОЖЕСТВЕННЫЕ события для обновления навбара
+                          window.dispatchEvent(new Event("chatsUpdated"));
+                          setTimeout(() => window.dispatchEvent(new Event("chatsUpdated")), 50);
+                          setTimeout(() => window.dispatchEvent(new Event("chatsUpdated")), 100);
+                        }
+                        setSelectedChat(chat.id);
+                        sessionStorage.setItem("selectedChat", chat.id);
+                      }}
                       className={`w-full p-4 text-left border-b border-color-light hover:bg-color-lightest transition-colors ${
                         selectedChat === chat.id ? "bg-color-lightest" : ""
                       } ${chat.isAI ? "bg-gradient-to-r from-color-medium/5 to-transparent" : ""}`}
@@ -540,23 +790,120 @@ function ChatPageContent() {
                       {currentChat.isAI ? "Всегда в сети" : "В сети"}
                     </p>
                   </div>
-                  <button className="p-2 rounded-lg hover:bg-color-lightest transition-colors">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-color-medium"
-                    >
-                      <circle cx="12" cy="12" r="1"></circle>
-                      <circle cx="19" cy="12" r="1"></circle>
-                      <circle cx="5" cy="12" r="1"></circle>
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {!currentChat.isAI && receiverId && (
+                      <Link
+                        href={`/user/${receiverId}`}
+                        className="p-2 rounded-lg hover:bg-color-lightest transition-colors"
+                        title="Профиль пользователя"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-color-medium"
+                        >
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </Link>
+                    )}
+                    {!currentChat.isAI && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowChatMenu(!showChatMenu)}
+                          className="p-2 rounded-lg hover:bg-color-lightest transition-colors"
+                          title="Меню чата"
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-color-medium"
+                          >
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="19" cy="12" r="1"></circle>
+                            <circle cx="5" cy="12" r="1"></circle>
+                          </svg>
+                        </button>
+                        {showChatMenu && (
+                          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-color-light z-50">
+                            <button
+                              onClick={async () => {
+                                if (!selectedChat || selectedChat === "auen-ai") return;
+                                const userId = localStorage.getItem("userId");
+                                if (!userId) return;
+                                
+                                if (confirm("Вы уверены, что хотите очистить все сообщения в этом чате?")) {
+                                  try {
+                                    const response = await fetch(`/api/chats/${selectedChat}?userId=${userId}&action=clear`, {
+                                      method: "DELETE",
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      setMessages([]);
+                                      setShowChatMenu(false);
+                                      showToast("Чат очищен", "success");
+                                      loadChats();
+                                    } else {
+                                      showToast(result.message || "Ошибка при очистке чата", "error");
+                                    }
+                                  } catch (error) {
+                                    console.error("Error clearing chat:", error);
+                                    showToast("Ошибка при очистке чата", "error");
+                                  }
+                                }
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-color-dark hover:bg-color-lightest transition-colors"
+                            >
+                              Очистить чат
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!selectedChat || selectedChat === "auen-ai") return;
+                                const userId = localStorage.getItem("userId");
+                                if (!userId) return;
+                                
+                                if (confirm("Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.")) {
+                                  try {
+                                    const response = await fetch(`/api/chats/${selectedChat}?userId=${userId}&action=delete`, {
+                                      method: "DELETE",
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      setSelectedChat(null);
+                                      sessionStorage.removeItem("selectedChat");
+                                      setShowChatMenu(false);
+                                      showToast("Чат удален", "success");
+                                      loadChats();
+                                    } else {
+                                      showToast(result.message || "Ошибка при удалении чата", "error");
+                                    }
+                                  } catch (error) {
+                                    console.error("Error deleting chat:", error);
+                                    showToast("Ошибка при удалении чата", "error");
+                                  }
+                                }
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              Удалить чат
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Messages */}
@@ -584,20 +931,38 @@ function ChatPageContent() {
                             {message.time}
                           </span>
                           {message.sender === "me" && (
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className={message.read ? "text-blue-300" : "text-white/50"}
-                            >
-                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                            </svg>
+                            <div className="flex items-center gap-0">
+                              {/* Первая галочка - отправлено (всегда видна) */}
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={message.read ? "text-blue-400" : "text-white/50"}
+                              >
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                              {/* Вторая галочка - прочитано (только если прочитано) */}
+                              {message.read && (
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="text-blue-400 -ml-2"
+                                >
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

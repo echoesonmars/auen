@@ -21,143 +21,100 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [wordCount, setWordCount] = useState(0);
-  const isUpdatingRef = useRef(false);
-  const lastSelectionRef = useRef<{ start: number; end: number } | null>(null);
+  const isInternalUpdateRef = useRef(false);
 
-  // Сохранение позиции курсора
-  const saveSelection = useCallback(() => {
-    if (!editorRef.current) return;
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(editorRef.current);
-    preCaretRange.setEnd(range.startContainer, range.startOffset);
-    const start = preCaretRange.toString().length;
-
-    lastSelectionRef.current = {
-      start,
-      end: start + range.toString().length,
-    };
+  // Обновление счетчика символов
+  const updateWordCount = useCallback((html: string) => {
+    if (!editorRef.current) return 0;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const text = tempDiv.textContent || tempDiv.innerText || "";
+    return text.length;
   }, []);
 
-  // Восстановление позиции курсора
-  const restoreSelection = useCallback(() => {
-    if (!editorRef.current || !lastSelectionRef.current) return;
-
-    const { start, end } = lastSelectionRef.current;
-    const selection = window.getSelection();
-    if (!selection) return;
-
-    try {
-      let charCount = 0;
-      const nodeStack: Node[] = [editorRef.current];
-      let node: Node | undefined;
-      let startNode: Node | null = null;
-      let startOffset = 0;
-      let endNode: Node | null = null;
-      let endOffset = 0;
-
-      while ((node = nodeStack.pop())) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          const nodeLength = node.textContent?.length || 0;
-          if (!startNode && charCount + nodeLength >= start) {
-            startNode = node;
-            startOffset = start - charCount;
-          }
-          if (!endNode && charCount + nodeLength >= end) {
-            endNode = node;
-            endOffset = end - charCount;
-            break;
-          }
-          charCount += nodeLength;
-        } else {
-          let i = node.childNodes.length;
-          while (i--) {
-            nodeStack.push(node.childNodes[i] as Node);
-          }
-        }
-      }
-
-      if (startNode) {
-        const range = document.createRange();
-        range.setStart(startNode, Math.min(startOffset, startNode.textContent?.length || 0));
-        if (endNode) {
-          range.setEnd(endNode, Math.min(endOffset, endNode.textContent?.length || 0));
-        } else {
-          range.setEnd(startNode, Math.min(startOffset, startNode.textContent?.length || 0));
-        }
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-    } catch (error) {
-      console.error("Error restoring selection:", error);
-    }
-  }, []);
-
-  // Инициализация значения только при первом монтировании или изменении value извне
+  // Инициализация и синхронизация значения
   useEffect(() => {
-    if (!editorRef.current) return;
-    
-    // Проверяем, что это внешнее изменение, а не внутреннее
-    if (isUpdatingRef.current) return;
+    if (!editorRef.current || isInternalUpdateRef.current) return;
     
     const currentHtml = editorRef.current.innerHTML;
     const normalizedValue = value || "";
-    const normalizedCurrent = currentHtml || "";
     
     // Обновляем только если значение действительно изменилось извне
-    if (normalizedValue !== normalizedCurrent) {
-      saveSelection();
+    if (normalizedValue !== currentHtml) {
+      isInternalUpdateRef.current = true;
       editorRef.current.innerHTML = normalizedValue;
-      const text = editorRef.current.innerText || "";
-      setWordCount(text.length);
-      
-      // Восстанавливаем позицию курсора после небольшой задержки
-      setTimeout(() => {
-        restoreSelection();
-      }, 0);
+      const count = updateWordCount(normalizedValue);
+      setWordCount(count);
+      isInternalUpdateRef.current = false;
     }
-  }, [value, saveSelection, restoreSelection]);
+  }, [value, updateWordCount]);
 
   const handleInput = useCallback(() => {
-    if (!editorRef.current || isUpdatingRef.current) return;
+    if (!editorRef.current || isInternalUpdateRef.current) return;
     
-    isUpdatingRef.current = true;
     const html = editorRef.current.innerHTML;
-    const text = editorRef.current.innerText || "";
+    const count = updateWordCount(html);
+    setWordCount(count);
     
-    // Подсчитываем символы без HTML тегов
-    const textLength = text.length;
-    setWordCount(textLength);
-    
-    // Сохраняем позицию курсора перед обновлением
-    saveSelection();
-    
-    // Вызываем onChange
-    onChange(html);
-    
-    // Восстанавливаем позицию курсора
-    setTimeout(() => {
-      restoreSelection();
-      isUpdatingRef.current = false;
-    }, 0);
-  }, [onChange, saveSelection, restoreSelection]);
+    // Вызываем onChange только если значение изменилось
+    if (html !== value) {
+      onChange(html);
+    }
+  }, [onChange, value, updateWordCount]);
 
   const applyFormat = useCallback((command: string, value?: string) => {
     if (!editorRef.current) return;
     
-    saveSelection();
-    document.execCommand(command, false, value);
     editorRef.current.focus();
     
-    // Обновляем после форматирования
+    // Сохраняем текущую позицию курсора
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    // Сохраняем range для восстановления позиции курсора после форматирования
+    selection.getRangeAt(0);
+    
+    try {
+      // Применяем форматирование
+      if (command === "formatBlock" && value) {
+        document.execCommand("formatBlock", false, value);
+      } else {
+        document.execCommand(command, false, value);
+      }
+      
+      // Обновляем после форматирования
+      setTimeout(() => {
+        handleInput();
+      }, 0);
+    } catch (err) {
+      console.error("Error applying format:", err);
+    }
+  }, [handleInput]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    
+    if (!editorRef.current) return;
+    
+    const text = e.clipboardData.getData("text/plain");
+    
+    // Вставляем только текст, без форматирования
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    
     setTimeout(() => {
       handleInput();
-      restoreSelection();
     }, 0);
-  }, [handleInput, saveSelection, restoreSelection]);
+  }, [handleInput]);
 
   const ToolbarButton = ({
     onClick,
@@ -177,6 +134,7 @@ export default function RichTextEditor({
       className={`p-2 rounded-lg hover:bg-color-lightest transition-colors ${
         isActive ? "bg-color-lightest" : ""
       }`}
+      onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса
     >
       {icon}
     </button>
@@ -271,23 +229,7 @@ export default function RichTextEditor({
           ref={editorRef}
           contentEditable
           onInput={handleInput}
-          onBlur={saveSelection}
-          onKeyDown={(e) => {
-            // Сохраняем позицию при нажатии клавиш
-            if (e.key === "Enter" || e.key === "Backspace" || e.key === "Delete") {
-              setTimeout(saveSelection, 0);
-            }
-          }}
-          onPaste={(e) => {
-            e.preventDefault();
-            saveSelection();
-            const text = e.clipboardData.getData("text/plain");
-            document.execCommand("insertText", false, text);
-            setTimeout(() => {
-              handleInput();
-              restoreSelection();
-            }, 0);
-          }}
+          onPaste={handlePaste}
           className={`w-full min-h-[220px] max-h-[520px] overflow-y-auto px-4 py-3 rounded-b-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium bg-white ${
             error ? "border-red-500" : ""
           }`}
@@ -297,11 +239,9 @@ export default function RichTextEditor({
             fontFamily: "inherit",
             lineHeight: "1.7",
             fontSize: "0.95rem",
-            backgroundColor: "#F9FAFB",
           }}
           data-placeholder={placeholder}
         />
-        
       </div>
 
       {/* Footer */}
@@ -335,6 +275,7 @@ export default function RichTextEditor({
           font-size: 1.5rem;
           font-weight: bold;
           margin: 1rem 0 0.5rem 0;
+          line-height: 1.3;
         }
         [contenteditable] ul, [contenteditable] ol {
           margin: 0.5rem 0;
@@ -342,6 +283,18 @@ export default function RichTextEditor({
         }
         [contenteditable] li {
           margin: 0.25rem 0;
+        }
+        [contenteditable] p {
+          margin: 0.5rem 0;
+        }
+        [contenteditable] strong {
+          font-weight: 600;
+        }
+        [contenteditable] em {
+          font-style: italic;
+        }
+        [contenteditable] u {
+          text-decoration: underline;
         }
       `}</style>
     </div>

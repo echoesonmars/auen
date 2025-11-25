@@ -33,6 +33,7 @@ interface Ad {
   location: string;
   status: string;
   views: number;
+  featured?: boolean;
   user: {
     id: string;
     name: string;
@@ -225,6 +226,38 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Error updating ad status:", error);
       showToast("Ошибка при обновлении статуса", "error");
+    }
+  };
+
+  const toggleFeatured = async (adId: string, currentFeatured: boolean) => {
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) return;
+
+      const response = await fetch(`/api/admin/ads/${adId}?userId=${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ featured: !currentFeatured }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        loadAds();
+        showToast(
+          !currentFeatured
+            ? "Объявление добавлено в рекламную галерею"
+            : "Объявление удалено из рекламной галереи",
+          "success"
+        );
+      } else {
+        showToast(result.message || "Ошибка при обновлении", "error");
+      }
+    } catch (error) {
+      console.error("Error toggling featured:", error);
+      showToast("Ошибка при обновлении", "error");
     }
   };
 
@@ -948,12 +981,24 @@ export default function AdminPage() {
                                 </button>
                               )}
                               {ad.status === "active" && (
-                                <button
-                                  onClick={() => updateAdStatus(ad.id, "inactive")}
-                                  className="px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors"
-                                >
-                                  Деактивировать
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => updateAdStatus(ad.id, "inactive")}
+                                    className="px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors"
+                                  >
+                                    Деактивировать
+                                  </button>
+                                  <button
+                                    onClick={() => toggleFeatured(ad.id, ad.featured || false)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                      ad.featured
+                                        ? "bg-yellow-500 text-white hover:bg-yellow-600"
+                                        : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                                    }`}
+                                  >
+                                    {ad.featured ? "⭐ В галерее" : "⭐ В галерею"}
+                                  </button>
+                                </>
                               )}
                               <Link
                                 href={`/ads/${ad.id}`}

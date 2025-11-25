@@ -197,6 +197,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const location = searchParams.get("location");
+    const featured = searchParams.get("featured");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -210,12 +211,20 @@ export async function GET(request: NextRequest) {
       query.location = { $regex: location, $options: "i" };
     }
 
+    if (featured === "true") {
+      query.featured = true;
+    }
+
     const skip = (page - 1) * limit;
+
+    const sortOrder = featured === "true" 
+      ? { featured: -1, createdAt: -1 } 
+      : { createdAt: -1 };
 
     const ads = await Ad.find(query)
       .populate("userId", "name email phone")
-      .select("title category description price location images views userId createdAt status")
-      .sort({ createdAt: -1 })
+      .select("title category description price location images views userId createdAt status featured")
+      .sort(sortOrder as Record<string, 1 | -1>)
       .skip(skip)
       .limit(limit)
       .lean();

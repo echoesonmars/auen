@@ -7,6 +7,8 @@ import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { useMetadata } from "@/app/hooks/useMetadata";
 import { useToast } from "@/components/ui/toast";
+import ImageGallery from "@/app/components/ImageGallery";
+import BookingWidget from "@/app/components/BookingWidget";
 
 interface Ad {
   _id: string;
@@ -40,6 +42,13 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isOwner, setIsOwner] = useState(false);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [bookings, setBookings] = useState<Array<{
+    startDate: string | Date;
+    endDate: string | Date;
+    status: string;
+  }>>([]);
 
   useEffect(() => {
     if (id) {
@@ -61,6 +70,11 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
           images: result.data.images || [],
         };
         setAd(adData);
+        
+        // Загружаем бронирования
+        if (adData.bookings) {
+          setBookings(adData.bookings);
+        }
         
         // Проверяем, является ли текущий пользователь владельцем
         const userId = localStorage.getItem("userId");
@@ -169,11 +183,11 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
               <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light overflow-hidden">
                 {ad.images && ad.images.length > 0 && ad.images[selectedImageIndex] ? (
                   <div className="relative">
-                    <div className="aspect-video bg-color-lightest flex items-center justify-center overflow-hidden">
+                    <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative group cursor-pointer lg:max-w-md lg:mx-auto" onClick={() => setShowGallery(true)}>
                       <img
                         src={ad.images[selectedImageIndex]}
                         alt={ad.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         onError={(e) => {
                           // Если изображение не загрузилось, показываем эмодзи
                           const target = e.target as HTMLImageElement;
@@ -187,6 +201,23 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                           }
                         }}
                       />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-full p-3">
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-color-dark"
+                          >
+                            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"></path>
+                          </svg>
+                        </div>
+                      </div>
                     </div>
                     {ad.images.length > 1 && (
                       <>
@@ -262,7 +293,7 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                     )}
                   </div>
                 ) : (
-                  <div className="aspect-video bg-color-lightest flex items-center justify-center">
+                  <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center lg:max-w-md lg:mx-auto">
                     <div className="text-8xl">{getCategoryIcon(ad.category)}</div>
                   </div>
                 )}
@@ -384,6 +415,17 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Booking Widget */}
+            {!isOwner && (
+              <BookingWidget
+                price={ad.price}
+                adId={ad._id}
+                bookings={bookings}
+                onBookingSuccess={() => {
+                  loadAd(); // Перезагружаем объявление для обновления бронирований
+                }}
+              />
+            )}
             {/* Price Card */}
             <BlurFade inView={true} delay={0.4} direction="up">
               <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sticky top-24">
@@ -423,46 +465,102 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                       onClick={async () => {
                         const userId = localStorage.getItem("userId");
                         if (!userId) {
-                          router.push("/login");
+                          showToast("Необходима авторизация", "warning");
+                          setTimeout(() => router.push("/login"), 500);
                           return;
                         }
+                        setIsCreatingChat(true);
                         try {
+                          // Получаем receiverId - может быть строкой или объектом с _id
+                          let receiverId: string | undefined;
+                          if (ad.userId) {
+                            if (typeof ad.userId === 'string') {
+                              receiverId = ad.userId;
+                            } else if (ad.userId._id) {
+                              receiverId = typeof ad.userId._id === 'string' 
+                                ? ad.userId._id 
+                                : String(ad.userId._id);
+                            } else {
+                              receiverId = String(ad.userId);
+                            }
+                          }
+                          
+                          if (!receiverId) {
+                            showToast("Ошибка: не удалось определить получателя", "error");
+                            setIsCreatingChat(false);
+                            return;
+                          }
+
+                          console.log("Creating chat:", { userId, receiverId });
+
                           // Создаем или находим чат
                           const chatResponse = await fetch("/api/chats", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               userId,
-                              receiverId: ad.userId._id,
+                              receiverId,
                             }),
                           });
+
+                          console.log("Chat response status:", chatResponse.status);
+
+                          if (!chatResponse.ok) {
+                            const errorText = await chatResponse.text();
+                            console.error("Chat API error:", errorText);
+                            let errorData;
+                            try {
+                              errorData = JSON.parse(errorText);
+                            } catch {
+                              errorData = { message: "Ошибка сервера" };
+                            }
+                            showToast("Ошибка при создании чата: " + (errorData.message || "Неизвестная ошибка"), "error");
+                            setIsCreatingChat(false);
+                            return;
+                          }
+
                           const chatResult = await chatResponse.json();
+                          console.log("Chat result:", chatResult);
+
                           if (chatResult.success) {
-                            // Открываем чат с первым сообщением о товаре
-                            router.push(`/chat?chatId=${chatResult.data.chatId}&adId=${ad._id}`);
+                            showToast("Чат открыт", "success");
+                            // Открываем чат с информацией о товаре
+                            router.push(`/chat?chatId=${chatResult.data.chatId}&adId=${ad._id}&adTitle=${encodeURIComponent(ad.title)}`);
                           } else {
-                            showToast("Ошибка при создании чата: " + chatResult.message, "error");
+                            showToast("Ошибка при создании чата: " + (chatResult.message || "Неизвестная ошибка"), "error");
                           }
                         } catch (error) {
                           console.error("Error creating chat:", error);
-                          showToast("Ошибка при создании чата", "error");
+                          showToast("Ошибка при создании чата. Попробуйте позже.", "error");
+                        } finally {
+                          setIsCreatingChat(false);
                         }
                       }}
-                      className="w-full bg-color-medium text-white px-4 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                      disabled={isCreatingChat}
+                      className="w-full bg-color-medium text-white px-4 py-3 rounded-lg font-semibold hover:bg-color-dark hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                      </svg>
-                      Написать сообщение
+                      {isCreatingChat ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                          <span>Открытие чата...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                          </svg>
+                          Написать арендодателю
+                        </>
+                      )}
                     </button>
                     {ad.userId.phone && (
                     <a
@@ -536,6 +634,15 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </div>
+
+      {/* Image Gallery Fullscreen */}
+      {showGallery && ad.images && ad.images.length > 0 && (
+        <ImageGallery
+          images={ad.images}
+          initialIndex={selectedImageIndex}
+          onClose={() => setShowGallery(false)}
+        />
+      )}
     </div>
   );
 }

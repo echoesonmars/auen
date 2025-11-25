@@ -1,0 +1,40 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["chatId", "senderId", "receiverId", "text"],
+    "properties": {
+      "chatId": {
+        "bsonType": "objectId",
+        "description": "ID чата, к которому относится сообщение"
+      },
+      "senderId": {
+        "bsonType": "objectId",
+        "description": "ID отправителя сообщения"
+      },
+      "receiverId": {
+        "bsonType": "objectId",
+        "description": "ID получателя сообщения"
+      },
+      "text": {
+        "bsonType": "string",
+        "minLength": 1,
+        "maxLength": 2000,
+        "description": "Текст сообщения, 1-2000 символов"
+      },
+      "read": {
+        "bsonType": ["bool", "null"],
+        "description": "Статус прочтения сообщения (true/false)"
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"],
+        "description": "Дата создания сообщения"
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"],
+        "description": "Дата обновления сообщения"
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
