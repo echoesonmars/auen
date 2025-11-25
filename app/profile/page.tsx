@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
-import { TextAnimate } from "@/components/ui/text-animate";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 
@@ -76,22 +75,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-color-lightest py-8 sm:py-12 md:py-20">
+    <div className="min-h-screen bg-color-lightest pt-12 sm:pt-16 md:pt-20 pb-10 sm:pb-14">
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <BlurFade inView={true} delay={0.1} direction="up">
-          <TextAnimate
-            as="h1"
-            animation="slideUp"
-            by="word"
-            startOnView={true}
-            delay={0.1}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold text-color-dark mb-2"
-          >
-            Мой профиль
-          </TextAnimate>
-        </BlurFade>
-
-        <div className="mt-8 sm:mt-12">
+        <div className="mt-0">
           {loading ? (
             <div className="text-center py-12">
               <p className="text-color-medium">Загрузка...</p>

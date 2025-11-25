@@ -425,7 +425,7 @@ function ChatPageContent() {
   };
 
   return (
-    <div className="bg-color-lightest fixed top-16 left-0 right-0 bottom-0 lg:top-0" style={{ overflow: 'hidden' }}>
+    <div className="bg-color-lightest fixed top-16 left-0 right-0 bottom-0 lg:top-16" style={{ overflow: 'hidden' }}>
       <div className="w-full h-full flex flex-1 min-h-0" style={{ overflow: 'hidden' }}>
         {/* Chat List */}
         <div className={`w-full ${selectedChat && isMobile ? 'hidden' : 'flex'} lg:w-1/3 lg:flex border-r border-color-light flex-col`} style={{ height: '100%', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>

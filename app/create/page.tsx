@@ -315,7 +315,7 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-color-lightest py-8 sm:py-12 md:py-20">
+    <div className="min-h-screen bg-color-lightest pt-12 sm:pt-16 md:pt-20 pb-10 sm:pb-14">
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <BlurFade inView={true} delay={0.1} direction="up">
           <TextAnimate
@@ -340,6 +340,7 @@ export default function CreatePage() {
           </TextAnimate>
         </BlurFade>
 
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
         <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           <BlurFade inView={true} delay={0.3} direction="up">
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sm:p-8">
@@ -478,85 +479,76 @@ export default function CreatePage() {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-color-dark mb-2">
-                    Фотографии {formData.images.length > 0 && `(${formData.images.length}/10)`}
-                  </label>
-                  
-                  {/* Превью загруженных фотографий */}
-                  {formData.imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-4">
-                      {formData.imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border border-color-light"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <line x1="18" y1="6" x2="6" y2="18"></line>
-                              <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Кнопка загрузки */}
-                  {formData.images.length < 10 && (
-                    <div className="border-2 border-dashed border-color-light rounded-lg p-6 text-center hover:border-color-medium transition-colors">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                        id="image-upload"
-                        disabled={formData.images.length >= 10}
-                      />
-                      <label
-                        htmlFor="image-upload"
-                        className="cursor-pointer flex flex-col items-center gap-2"
-                      >
-                        <svg
-                          className="w-12 h-12 text-color-medium"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        <span className="text-sm text-color-medium">
-                          Нажмите для загрузки или перетащите файлы
-                        </span>
-                        <span className="text-xs text-gray-500 mt-2">
-                          Можно загрузить до 10 фотографий
-                        </span>
-                      </label>
-                    </div>
-                  )}
-                </div>
               </div>
+            </div>
+          </BlurFade>
+
+          <BlurFade inView={true} delay={0.35} direction="up">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-color-dark">Медиа и презентация</h2>
+                  <p className="text-sm text-color-medium mt-1">
+                    Добавьте качественные фото — так объявление быстрее найдёт своего арендатора.
+                  </p>
+                </div>
+                <p className="text-sm text-color-medium bg-color-lightest px-3 py-2 rounded-lg">
+                  {formData.images.length}/10 файлов
+                </p>
+              </div>
+
+              {formData.imagePreviews.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                  {formData.imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group rounded-xl overflow-hidden border border-color-light shadow-sm">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 sm:h-40 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Удалить"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {formData.images.length < 10 && (
+                <div className="relative border-2 border-dashed border-color-light rounded-2xl p-6 sm:p-8 text-center hover:border-color-medium transition-colors bg-color-lightest/50">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    aria-label="Загрузить фотографии"
+                  />
+                  <div className="flex flex-col items-center gap-3 pointer-events-none">
+                    <svg
+                      className="w-12 h-12 text-color-medium"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-color-dark">
+                        Перетащите файлы или нажмите для выбора
+                      </p>
+                      <p className="text-xs text-color-medium">
+                        Поддерживаются JPG, PNG, WebP. До 5 МБ на файл.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </BlurFade>
 
@@ -586,6 +578,36 @@ export default function CreatePage() {
             </div>
           </BlurFade>
         </form>
+        <aside className="space-y-4">
+          <BlurFade inView={true} delay={0.35} direction="up">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-5 sm:p-6 sticky top-32">
+              <h3 className="text-lg font-semibold text-color-dark mb-3">
+                Требования к объявлению
+              </h3>
+              <ul className="space-y-2 text-sm text-color-medium">
+                <li>• Название: от 10 до 100 символов</li>
+                <li>• Описание: от 50 до 2000 символов</li>
+                <li>• Фото: до 10 файлов (JPEG/PNG/WebP)</li>
+                <li>• Цена: только цифры и период аренды</li>
+              </ul>
+            </div>
+          </BlurFade>
+          <BlurFade inView={true} delay={0.45} direction="up">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-color-light p-5 sm:p-6 sticky top-[calc(32px+260px)]">
+              <h3 className="text-lg font-semibold text-color-dark mb-3">
+                Советы
+              </h3>
+              <p className="text-sm text-color-medium mb-4">
+                Указывайте уникальные особенности оборудования и условия аренды. Чем подробнее описание, тем выше шанс найти клиента.
+              </p>
+              <div className="rounded-lg bg-color-lightest p-3 text-sm text-color-dark">
+                <p className="font-semibold mb-1">Не забудьте:</p>
+                <p>— добавить реальные фото<br/>— указать город и район<br/>— проверить контакты</p>
+              </div>
+            </div>
+          </BlurFade>
+        </aside>
+        </div>
       </div>
     </div>
   );

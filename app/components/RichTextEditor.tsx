@@ -183,9 +183,9 @@ export default function RichTextEditor({
   );
 
   return (
-    <div>
+    <div className="space-y-2">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2 bg-color-lightest rounded-t-lg border border-color-light border-b-0">
+      <div className="flex flex-wrap items-center gap-1 p-2 bg-color-lightest rounded-t-lg border border-color-light border-b-0 overflow-x-auto">
         <ToolbarButton
           onClick={() => applyFormat("bold")}
           title="Жирный (Ctrl+B)"
@@ -288,12 +288,16 @@ export default function RichTextEditor({
               restoreSelection();
             }, 0);
           }}
-          className={`w-full min-h-[200px] px-4 py-3 rounded-b-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium ${
+          className={`w-full min-h-[220px] max-h-[520px] overflow-y-auto px-4 py-3 rounded-b-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium bg-white ${
             error ? "border-red-500" : ""
           }`}
           style={{
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
+            fontFamily: "inherit",
+            lineHeight: "1.7",
+            fontSize: "0.95rem",
+            backgroundColor: "#F9FAFB",
           }}
           data-placeholder={placeholder}
         />
@@ -301,8 +305,8 @@ export default function RichTextEditor({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mt-2">
+        <div className="flex items-center gap-4 flex-wrap">
           {error && (
             <p className="text-sm text-red-500">{error}</p>
           )}

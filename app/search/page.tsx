@@ -32,6 +32,7 @@ function SearchPageContent() {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("");
   const [sortBy, setSortBy] = useState("newest");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +152,101 @@ function SearchPageContent() {
     }
   };
 
+  const renderCategoriesContent = (options?: { className?: string; onSelect?: () => void }) => (
+    <div className={`bg-white rounded-2xl border border-color-light p-6 ${options?.className || ""}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-color-dark">Категории</h3>
+        {(selectedCategory || selectedSubcategory) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory("");
+              setSelectedSubcategory("");
+              setOpenCategory(null);
+              options?.onSelect?.();
+            }}
+            className="w-8 h-8 rounded-full bg-color-lightest text-color-dark flex items-center justify-center hover:bg-color-light transition-colors"
+            title="Сбросить фильтры"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        {categories.map((category) => (
+          <div key={category.name} className="space-y-2">
+            <button
+              onClick={() => {
+                if (openCategory === category.name) {
+                  setOpenCategory(null);
+                } else {
+                  setOpenCategory(category.name);
+                  setSelectedCategory(category.name);
+                }
+              }}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center justify-between gap-3 ${
+                selectedCategory === category.name
+                  ? "bg-color-medium text-white"
+                  : "bg-color-lightest text-color-dark hover:bg-color-light"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{category.icon}</span>
+                <span className="font-medium">{category.name}</span>
+              </div>
+              <svg
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  openCategory === category.name ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            <div
+              className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                openCategory === category.name ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
+              }`}
+            >
+              <div className="pl-4 space-y-1">
+                {category.subcategories.map((subcategory, idx) => (
+                  <BlurFade
+                    key={subcategory}
+                    inView={openCategory === category.name}
+                    delay={idx * 0.05}
+                    direction="up"
+                  >
+                    <button
+                      onClick={() => {
+                        setSelectedSubcategory(subcategory);
+                        setSelectedCategory(category.name);
+                        options?.onSelect?.();
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 text-sm ${
+                        selectedSubcategory === subcategory
+                          ? "bg-color-medium/20 text-color-medium font-semibold"
+                          : "text-color-medium hover:bg-color-lightest"
+                      }`}
+                    >
+                      {subcategory}
+                    </button>
+                  </BlurFade>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     loadAds();
@@ -193,12 +289,13 @@ function SearchPageContent() {
                   />
                 </div>
 
-                {/* Location selector */}
-                <div className="relative flex-shrink-0" ref={locationRef}>
+                {/* Location selector + filters */}
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none" ref={locationRef}>
                   <button
                     type="button"
                     onClick={() => setIsLocationOpen(!isLocationOpen)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 text-base rounded-xl border border-color-light hover:border-color-medium transition-colors bg-transparent text-color-dark min-w-[150px]"
+                      className="flex items-center justify-center gap-2 px-4 py-3 text-base rounded-xl border border-color-light hover:border-color-medium transition-colors bg-transparent text-color-dark w-full min-w-[150px]"
                   >
                     <svg
                       className="w-5 h-5 text-color-medium"
@@ -265,6 +362,14 @@ function SearchPageContent() {
                       ))}
                     </div>
                   )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(true)}
+                    className="sm:hidden flex-1 px-4 py-3 rounded-xl border border-color-light text-color-dark font-medium hover:border-color-medium transition-colors"
+                  >
+                    Фильтры
+                  </button>
                 </div>
 
                 {/* Search button */}
@@ -284,97 +389,9 @@ function SearchPageContent() {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           {/* Categories Sidebar */}
-          <aside className="lg:col-span-1">
+          <aside className="lg:col-span-1 hidden lg:block">
             <BlurFade inView={true} delay={0.2} direction="up">
-              <div className="bg-white rounded-2xl border border-color-light p-6 sticky top-32">
-                <h3 className="text-lg font-bold text-color-dark mb-4">Категории</h3>
-                 <div className="space-y-2">
-                   <button
-                     onClick={() => {
-                       setSelectedCategory("");
-                       setOpenCategory(null);
-                       setSelectedSubcategory("");
-                     }}
-                     className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-                       selectedCategory === ""
-                         ? "bg-color-medium text-white"
-                         : "bg-color-lightest text-color-dark hover:bg-color-light"
-                     }`}
-                   >
-                     Все категории
-                   </button>
-                   {categories.map((category) => (
-                     <div key={category.name} className="space-y-2">
-                       <button
-                         onClick={() => {
-                           if (openCategory === category.name) {
-                             setOpenCategory(null);
-                           } else {
-                             setOpenCategory(category.name);
-                             setSelectedCategory(category.name);
-                           }
-                         }}
-                         className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center justify-between gap-3 ${
-                           selectedCategory === category.name
-                             ? "bg-color-medium text-white"
-                             : "bg-color-lightest text-color-dark hover:bg-color-light"
-                         }`}
-                       >
-                         <div className="flex items-center gap-3">
-                           <span className="text-2xl">{category.icon}</span>
-                           <span className="font-medium">{category.name}</span>
-                         </div>
-                         <svg
-                           className={`w-5 h-5 transition-transform duration-300 ${
-                             openCategory === category.name ? "rotate-180" : ""
-                           }`}
-                           fill="none"
-                           stroke="currentColor"
-                           viewBox="0 0 24 24"
-                         >
-                           <path
-                             strokeLinecap="round"
-                             strokeLinejoin="round"
-                             strokeWidth={2}
-                             d="M19 9l-7 7-7-7"
-                           />
-                         </svg>
-                       </button>
-                       {/* Subcategories */}
-                       <div
-                         className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                           openCategory === category.name ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
-                         }`}
-                       >
-                         <div className="pl-4 space-y-1">
-                           {category.subcategories.map((subcategory, idx) => (
-                             <BlurFade
-                               key={subcategory}
-                               inView={openCategory === category.name}
-                               delay={idx * 0.05}
-                               direction="up"
-                             >
-                               <button
-                                 onClick={() => {
-                                   setSelectedSubcategory(subcategory);
-                                   setSelectedCategory(category.name);
-                                 }}
-                                 className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 text-sm ${
-                                   selectedSubcategory === subcategory
-                                     ? "bg-color-medium/20 text-color-medium font-semibold"
-                                     : "text-color-medium hover:bg-color-lightest"
-                                 }`}
-                               >
-                                 {subcategory}
-                               </button>
-                             </BlurFade>
-                           ))}
-                         </div>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-              </div>
+              {renderCategoriesContent({ className: "sticky top-32" })}
             </BlurFade>
           </aside>
 
@@ -383,16 +400,16 @@ function SearchPageContent() {
             {/* Sort and Filters */}
             <BlurFade inView={true} delay={0.3} direction="up">
               <div className="bg-white rounded-2xl border border-color-light p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="text-color-dark">
+                <div className="text-color-dark w-full">
                   <span className="font-semibold">Найдено: </span>
                   <span className="text-color-medium">{ads.length} объявлений</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-sm text-color-medium">Сортировка:</label>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <label className="text-sm text-color-medium whitespace-nowrap">Сортировка:</label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-4 py-2 rounded-xl border border-color-light focus:border-color-medium focus:outline-none focus:ring-2 focus:ring-color-medium/20 text-color-dark bg-white"
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-color-light focus:border-color-medium focus:outline-none focus:ring-2 focus:ring-color-medium/20 text-color-dark bg-white"
                   >
                     <option value="newest">Сначала новые</option>
                     <option value="oldest">Сначала старые</option>
@@ -480,6 +497,36 @@ function SearchPageContent() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+          isMobileFiltersOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div
+          className="absolute inset-0 bg-black/40 transition-opacity duration-300"
+          onClick={() => setIsMobileFiltersOpen(false)}
+        />
+        <div
+          className={`absolute inset-x-0 bottom-0 w-full bg-white shadow-2xl rounded-t-3xl p-6 overflow-y-auto transition-transform duration-300 ${
+            isMobileFiltersOpen ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-color-dark">Фильтры</h3>
+            <button
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(false)}
+              className="w-10 h-10 rounded-full bg-color-lightest flex items-center justify-center text-color-dark"
+            >
+              ✕
+            </button>
+          </div>
+          {renderCategoriesContent({
+            onSelect: () => setIsMobileFiltersOpen(false),
+            className: "border-none p-0",
+          })}
         </div>
       </div>
     </div>
