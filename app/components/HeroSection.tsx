@@ -6,6 +6,7 @@ import Link from "next/link";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { Highlighter } from "@/components/ui/highlighter";
 import { BlurFade } from "@/components/ui/blur-fade";
+import { getImageUrl } from "@/lib/utils";
 
 export default function HeroSection() {
   const router = useRouter();
@@ -271,7 +272,7 @@ export default function HeroSection() {
                       {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
                         <>
                           <img 
-                            src={card.image} 
+                            src={getImageUrl(card.image)} 
                             alt={card.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -543,7 +544,7 @@ export default function HeroSection() {
                       {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
                         <>
                           <img 
-                            src={card.image} 
+                            src={getImageUrl(card.image)} 
                             alt={card.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {

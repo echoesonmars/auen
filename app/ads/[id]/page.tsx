@@ -9,6 +9,7 @@ import { useMetadata } from "@/app/hooks/useMetadata";
 import { useToast } from "@/components/ui/toast";
 import ImageGallery from "@/app/components/ImageGallery";
 import BookingWidget from "@/app/components/BookingWidget";
+import { getImageUrl } from "@/lib/utils";
 
 interface Ad {
   _id: string;
@@ -185,7 +186,7 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                   <div className="relative">
                     <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative group cursor-pointer lg:max-w-md lg:mx-auto" onClick={() => setShowGallery(true)}>
                       <img
-                        src={ad.images[selectedImageIndex]}
+                        src={getImageUrl(ad.images[selectedImageIndex])}
                         alt={ad.title}
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         onError={(e) => {
@@ -310,7 +311,7 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                         }`}
                       >
                         <img
-                          src={image}
+                          src={getImageUrl(image)}
                           alt={`${ad.title} ${index + 1}`}
                           className="w-full h-full object-cover"
                           onError={(e) => {

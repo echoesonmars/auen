@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import Link from "next/link";
 import { useMetadata } from "@/app/hooks/useMetadata";
+import { getImageUrl } from "@/lib/utils";
 
 interface Ad {
   _id: string;
@@ -461,7 +462,7 @@ function SearchPageContent() {
                       <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative">
                         {ad.images && ad.images.length > 0 && ad.images[0] ? (
                           <img
-                            src={ad.images[0]}
+                            src={getImageUrl(ad.images[0])}
                             alt={ad.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {

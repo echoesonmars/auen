@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
+import { getImageUrl } from "@/lib/utils";
 
 interface Booking {
   _id: string;
@@ -156,7 +157,7 @@ export default function BookingsTab() {
                   <div className="w-full sm:w-32 h-32 rounded-lg overflow-hidden bg-color-lightest flex-shrink-0">
                     {booking.adId.images && booking.adId.images.length > 0 ? (
                       <img
-                        src={booking.adId.images[0]}
+                        src={getImageUrl(booking.adId.images[0])}
                         alt={booking.adId.title}
                         className="w-full h-full object-cover"
                       />

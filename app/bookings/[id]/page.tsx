@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { useToast } from "@/components/ui/toast";
+import { getImageUrl } from "@/lib/utils";
 
 interface Booking {
   _id: string;
@@ -294,7 +295,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     {booking.adId.images && booking.adId.images.length > 0 ? (
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-color-lightest flex-shrink-0">
                         <img
-                          src={booking.adId.images[0]}
+                          src={getImageUrl(booking.adId.images[0])}
                           alt={booking.adId.title}
                           className="w-full h-full object-cover"
                         />

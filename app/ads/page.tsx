@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import Link from "next/link";
+import { getImageUrl } from "@/lib/utils";
 
 interface Ad {
   _id: string;
@@ -191,7 +192,7 @@ export default function AdsPage() {
                       <div className="aspect-video mb-4 flex items-center justify-center bg-color-lightest rounded-lg group-hover:bg-color-light transition-colors overflow-hidden">
                         {ad.images && ad.images.length > 0 && ad.images[0] ? (
                           <img
-                            src={ad.images[0]}
+                            src={getImageUrl(ad.images[0])}
                             alt={ad.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {

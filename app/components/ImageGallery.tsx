@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getImageUrl } from "@/lib/utils";
 
 interface ImageGalleryProps {
   images: string[];
@@ -137,7 +138,7 @@ export default function ImageGallery({
           onClick={(e) => e.stopPropagation()}
         >
           <img
-            src={images[currentIndex]}
+            src={getImageUrl(images[currentIndex])}
             alt={`Image ${currentIndex + 1}`}
             className="max-w-full max-h-full object-contain rounded-lg"
           />
@@ -167,7 +168,7 @@ export default function ImageGallery({
                 }`}
               >
                 <img
-                  src={image}
+                  src={getImageUrl(image)}
                   alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

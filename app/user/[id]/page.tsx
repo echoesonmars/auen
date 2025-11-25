@@ -7,6 +7,7 @@ import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useMetadata } from "@/app/hooks/useMetadata";
+import { getImageUrl } from "@/lib/utils";
 
 interface User {
   _id: string;
@@ -766,7 +767,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
                       <div className="aspect-video bg-color-lightest flex items-center justify-center">
                         {ad.images && ad.images.length > 0 ? (
                           <img
-                            src={ad.images[0]}
+                            src={getImageUrl(ad.images[0])}
                             alt={ad.title}
                             className="w-full h-full object-cover"
                           />
