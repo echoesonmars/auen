@@ -1,39 +1,35 @@
 {
   "$jsonSchema": {
-    "bsonType": "object",
-    "required": ["participants"],
-    "properties": {
-      "participants": {
-        "bsonType": "array",
-        "description": "Массив участников чата (ровно 2)",
-        "minItems": 2,
-        "maxItems": 2,
-        "items": {
-          "bsonType": "objectId",
-          "description": "ID пользователя"
+      "bsonType": "object",
+      "required": ["participants"],
+      "properties": {
+        "participants": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "objectId"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Массив из 2 участников чата (обязательно)"
+        },
+        "lastMessage": {
+          "bsonType": ["objectId", "null"],
+          "description": "ID последнего сообщения в чате"
+        },
+        "lastMessageAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата и время последнего сообщения"
+        },
+        "createdAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата создания чата"
+        },
+        "updatedAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата обновления чата"
         }
       },
-      "lastMessage": {
-        "bsonType": "objectId",
-        "description": "ID последнего сообщения",
-        "required": false
-      },
-      "lastMessageAt": {
-        "bsonType": "date",
-        "description": "Дата последнего сообщения",
-        "required": false
-      },
-      "createdAt": {
-        "bsonType": "date",
-        "description": "Дата создания",
-        "required": false
-      },
-      "updatedAt": {
-        "bsonType": "date",
-        "description": "Дата обновления",
-        "required": false
-      }
+      "additionalProperties": true
     }
-  }
 }
 

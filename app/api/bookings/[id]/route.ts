@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import Ad from "@/models/Ad";
+import Booking from "@/models/Booking";
 
 export const dynamic = 'force-dynamic';
 
@@ -36,28 +37,11 @@ export async function GET(
       );
     }
 
-    // Находим объявление с бронированием
-    const ad = await Ad.findOne({
-      "bookings._id": bookingId,
-    })
-      .populate("userId", "name email phone")
+    // Находим бронирование в отдельной коллекции
+    const booking = await Booking.findById(bookingId)
+      .populate("renterId", "name email phone")
+      .populate("ownerId", "name email phone")
       .lean();
-
-    if (!ad) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Бронирование не найдено",
-        },
-        { status: 404 }
-      );
-    }
-
-    // Находим конкретное бронирование
-    const bookings = ad.bookings || [];
-    const booking = (bookings as unknown as Array<{ _id?: { toString: () => string }; renterId?: { toString: () => string } | mongoose.Types.ObjectId; [key: string]: unknown }>).find(
-      (b) => b._id && b._id.toString() === bookingId
-    );
 
     if (!booking) {
       return NextResponse.json(
@@ -69,14 +53,33 @@ export async function GET(
       );
     }
 
-    // Получаем информацию об арендаторе
-    const renterId = booking.renterId ? (typeof booking.renterId === 'object' && 'toString' in booking.renterId ? booking.renterId.toString() : String(booking.renterId)) : '';
-    const User = (await import("@/models/User")).default;
-    let renter = null;
-    
-    // Проверяем валидность renterId перед запросом
-    if (renterId && mongoose.Types.ObjectId.isValid(renterId)) {
-      renter = await User.findById(renterId).select("name email phone").lean();
+    // Получаем объявление
+    const ad = await Ad.findById(booking.adId)
+      .populate("userId", "name email phone")
+      .lean();
+
+    if (!ad) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Объявление не найдено",
+        },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем права доступа
+    const isOwner = ad.userId && (typeof ad.userId === 'object' && '_id' in ad.userId ? ad.userId._id.toString() : String(ad.userId)) === userId;
+    const isRenter = booking.renterId && (typeof booking.renterId === 'object' && '_id' in booking.renterId ? booking.renterId._id.toString() : String(booking.renterId)) === userId;
+
+    if (!isOwner && !isRenter) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Нет доступа к этому бронированию",
+        },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({
@@ -89,17 +92,21 @@ export async function GET(
           images: ad.images || [],
           price: ad.price,
           location: ad.location,
+          latitude: ad.latitude,
+          longitude: ad.longitude,
+          address: ad.address,
           userId: ad.userId,
         },
-        renterId: renter || { _id: renterId || "", name: "Неизвестно", email: "" },
+        renterId: booking.renterId || { _id: "", name: "Неизвестно", email: "" },
         startDate: booking.startDate,
         endDate: booking.endDate,
         startTime: booking.startTime,
         endTime: booking.endTime,
-        period: booking.period,
-        price: booking.price || 0,
+        period: booking.periodType,
+        price: booking.totalPrice || 0,
         status: booking.status || "pending",
-        createdAt: booking.createdAt || ad.createdAt,
+        deliveryMethod: booking.deliveryMethod || "pickup",
+        createdAt: booking.createdAt,
       },
     });
   } catch (error: unknown) {
@@ -158,26 +165,8 @@ export async function PATCH(
       );
     }
 
-    // Находим объявление с бронированием
-    const ad = await Ad.findOne({
-      "bookings._id": bookingId,
-    });
-
-    if (!ad) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Бронирование не найдено",
-        },
-        { status: 404 }
-      );
-    }
-
-    // Находим конкретное бронирование
-    const bookings = ad.bookings || [];
-    const booking = (bookings as unknown as Array<{ _id?: { toString: () => string }; renterId?: { toString: () => string } | mongoose.Types.ObjectId; status?: string; [key: string]: unknown }>).find(
-      (b) => b._id && b._id.toString() === bookingId
-    );
+    // Находим бронирование в отдельной коллекции
+    const booking = await Booking.findById(bookingId);
 
     if (!booking) {
       return NextResponse.json(
@@ -189,10 +178,22 @@ export async function PATCH(
       );
     }
 
+    // Получаем объявление для проверки прав
+    const ad = await Ad.findById(booking.adId);
+
+    if (!ad) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Объявление не найдено",
+        },
+        { status: 404 }
+      );
+    }
+
     // Проверяем права доступа
     const isOwner = ad.userId.toString() === userId;
-    const renterIdStr = booking.renterId ? (typeof booking.renterId === 'object' && 'toString' in booking.renterId ? booking.renterId.toString() : String(booking.renterId)) : '';
-    const isRenter = renterIdStr === userId;
+    const isRenter = booking.renterId.toString() === userId;
 
     if (!isOwner && !isRenter) {
       return NextResponse.json(
@@ -225,9 +226,19 @@ export async function PATCH(
       );
     }
 
+    // Маппинг статусов
+    let bookingStatus: "pending" | "confirmed" | "cancelled" | "completed" = "pending";
+    if (status === 'approved') {
+      bookingStatus = "confirmed";
+    } else if (status === 'cancelled') {
+      bookingStatus = "cancelled";
+    } else if (status === 'rejected') {
+      bookingStatus = "cancelled";
+    }
+
     // Обновляем статус бронирования
-    booking.status = status;
-    await ad.save();
+    booking.status = bookingStatus;
+    await booking.save();
 
     return NextResponse.json({
       success: true,

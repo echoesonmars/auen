@@ -6,6 +6,13 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useToast } from "@/components/ui/toast";
 import RichTextEditor from "../components/RichTextEditor";
+import dynamic from "next/dynamic";
+import { isCityName, normalizeCityName } from "@/lib/cityNormalizer";
+
+// Динамический импорт для избежания SSR проблем с Leaflet
+const LocationPickerDynamic = dynamic(() => import("../components/LocationPicker"), {
+  ssr: false,
+});
 
 export default function CreatePage() {
   const router = useRouter();
@@ -28,6 +35,9 @@ export default function CreatePage() {
     priceAmount: "",
     pricePeriod: "час",
     location: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+    address: null as string | null,
     images: [] as File[],
     imagePreviews: [] as string[],
   });
@@ -87,11 +97,15 @@ export default function CreatePage() {
       if (!formData.pricePeriod) {
         clientErrors.price = "Выберите период";
       }
-      if (formData.location.trim().length < 2) {
-        clientErrors.location = "Укажите локацию (минимум 2 символа)";
-      }
-      if (formData.location.trim().length > 50) {
+      if (!formData.location || formData.location.trim().length === 0) {
+        clientErrors.location = "Укажите локацию";
+      } else if (!isCityName(formData.location)) {
+        clientErrors.location = "Укажите название города, а не адрес или координаты";
+      } else if (formData.location.trim().length > 50) {
         clientErrors.location = "Локация не должна превышать 50 символов";
+      }
+      if (!formData.latitude || !formData.longitude) {
+        clientErrors.location = "Выберите местоположение на карте";
       }
 
       if (Object.keys(clientErrors).length > 0) {
@@ -144,13 +158,25 @@ export default function CreatePage() {
         }
       }
 
+      // Нормализуем и проверяем город перед отправкой
+      let normalizedLocation = formData.location.trim();
+      if (!isCityName(normalizedLocation)) {
+        setErrors({ location: "Укажите название города, а не адрес или координаты" });
+        setIsSubmitting(false);
+        return;
+      }
+      normalizedLocation = normalizeCityName(normalizedLocation);
+
       // Подготовка данных для отправки
       const formDataToSend = {
         title: formData.title.trim(),
         category: formData.category,
         description: formData.description, // HTML описание отправляем как есть
         price: price,
-        location: formData.location.trim(),
+        location: normalizedLocation,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        address: formData.address,
         images: imageUrls,
         userId,
       };
@@ -444,18 +470,28 @@ export default function CreatePage() {
 
                 <div>
                   <label className="block text-sm font-medium text-color-dark mb-2">
-                    Локация *
+                    Местоположение *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="Алматы"
-                    className="w-full px-4 py-3 rounded-lg border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none transition-all text-color-dark placeholder:text-color-medium"
+                  <LocationPickerDynamic
+                    onLocationSelect={(location) => {
+                      // Используем нормализованный город
+                      const city = location.city || "";
+                      setFormData({
+                        ...formData,
+                        location: city,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        address: location.address,
+                      });
+                      if (errors.location) setErrors({ ...errors, location: "" });
+                    }}
+                    error={errors.location}
                   />
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Укажите город или район
+                    Выберите местоположение на карте или найдите адрес
                   </p>
                 </div>
 

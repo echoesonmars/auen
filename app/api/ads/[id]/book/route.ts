@@ -16,7 +16,7 @@ export async function POST(
     const adId = resolvedParams.id;
 
     const body = await request.json();
-    const { userId, startDate, endDate, startTime, endTime, periodType, totalPrice } = body;
+    const { userId, startDate, endDate, startTime, endTime, periodType, totalPrice, deliveryMethod } = body;
 
     if (!userId || !startDate || !endDate || !periodType || !totalPrice) {
       return NextResponse.json(
@@ -123,6 +123,7 @@ export async function POST(
       periodType,
       totalPrice,
       status: "pending",
+      deliveryMethod: deliveryMethod || "pickup",
     });
 
     return NextResponse.json(

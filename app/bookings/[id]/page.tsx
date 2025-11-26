@@ -7,6 +7,12 @@ import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { useToast } from "@/components/ui/toast";
 import { getImageUrl } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+// Динамический импорт для избежания SSR проблем с Leaflet
+const RouteMapDynamic = dynamic(() => import("@/app/components/RouteMap"), {
+  ssr: false,
+});
 
 interface Booking {
   _id: string;
@@ -16,6 +22,9 @@ interface Booking {
     images: string[];
     price: string;
     location: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
   };
   renterId: {
     _id: string;
@@ -30,6 +39,7 @@ interface Booking {
   period: 'hour' | 'day' | 'week' | 'month';
   price?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  deliveryMethod?: 'pickup' | 'courier';
   createdAt: string;
 }
 
@@ -326,8 +336,25 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </BlurFade>
 
+            {/* Route Map */}
+            {booking.adId.latitude && booking.adId.longitude && (
+              <BlurFade inView={true} delay={0.4} direction="up">
+                <div className="bg-white rounded-2xl border border-color-light p-6">
+                  <h2 className="text-2xl font-bold text-color-dark mb-4">Маршрут</h2>
+                  <RouteMapDynamic
+                    destination={{
+                      latitude: booking.adId.latitude,
+                      longitude: booking.adId.longitude,
+                      address: booking.adId.address,
+                    }}
+                    deliveryMethod={booking.deliveryMethod || "pickup"}
+                  />
+                </div>
+              </BlurFade>
+            )}
+
             {/* User Info */}
-            <BlurFade inView={true} delay={0.4} direction="up">
+            <BlurFade inView={true} delay={0.5} direction="up">
               <div className="bg-white rounded-2xl border border-color-light p-6">
                 <h2 className="text-2xl font-bold text-color-dark mb-4">
                   {isOwner ? "Арендатор" : "Владелец"}

@@ -14,8 +14,7 @@ export const registerSchema = z.object({
     .trim(),
   phone: z
     .string()
-    .regex(/^\+?[1-9]\d{1,14}$/, "Некорректный номер телефона")
-    .min(10, "Телефон должен содержать минимум 10 цифр"),
+    .regex(/^\+?[1-9]\d{1,14}$/, "Некорректный номер телефона"),
   password: z
     .string()
     .min(8, "Пароль должен содержать минимум 8 символов")
@@ -48,16 +47,48 @@ export const updateProfileSchema = z.object({
     .string()
     .min(2, "Имя должно содержать минимум 2 символа")
     .max(50, "Имя не должно превышать 50 символов")
+    .regex(/^[а-яА-ЯёЁa-zA-Z\s]+$/, "Имя может содержать только буквы")
     .optional(),
   email: z
     .string()
-    .email("Некорректный email адрес")
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Некорректный email адрес")
     .toLowerCase()
     .trim()
     .optional(),
   phone: z
     .string()
     .regex(/^\+?[1-9]\d{1,14}$/, "Некорректный номер телефона")
+    .nullable()
+    .optional(),
+  bio: z
+    .string()
+    .max(500, "Описание не должно превышать 500 символов")
+    .nullable()
+    .optional(),
+  website: z
+    .string()
+    .regex(/^https?:\/\/.+/, "Некорректный URL сайта")
+    .nullable()
+    .optional(),
+  instagram: z
+    .string()
+    .regex(/^[a-zA-Z0-9._]+$/, "Некорректный username Instagram")
+    .nullable()
+    .optional(),
+  telegram: z
+    .string()
+    .regex(/^[a-zA-Z0-9_]+$/, "Некорректный username Telegram")
+    .nullable()
+    .optional(),
+  vk: z
+    .string()
+    .regex(/^[a-zA-Z0-9._]+$/, "Некорректный username VK")
+    .nullable()
+    .optional(),
+  youtube: z
+    .string()
+    .regex(/^[a-zA-Z0-9._-]+$/, "Некорректный username YouTube")
+    .nullable()
     .optional(),
 });
 

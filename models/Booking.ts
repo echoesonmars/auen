@@ -11,6 +11,7 @@ export interface IBooking extends Document {
   periodType: "hour" | "day" | "week" | "month";
   totalPrice: number;
   status: "pending" | "confirmed" | "cancelled" | "completed";
+  deliveryMethod?: "pickup" | "courier";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,6 +86,14 @@ const BookingSchema: Schema = new Schema(
       },
       default: "pending",
       index: true,
+    },
+    deliveryMethod: {
+      type: String,
+      enum: {
+        values: ["pickup", "courier"],
+        message: "Некорректный способ доставки",
+      },
+      default: "pickup",
     },
   },
   { timestamps: true }

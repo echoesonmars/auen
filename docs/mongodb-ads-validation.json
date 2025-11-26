@@ -1,72 +1,135 @@
 {
   "$jsonSchema": {
-    "bsonType": "object",
-    "required": ["title", "category", "description", "price", "location", "userId"],
-    "properties": {
-      "title": {
-        "bsonType": "string",
-        "minLength": 10,
-        "maxLength": 100,
-        "description": "Название должно содержать 10-100 символов"
-      },
-      "category": {
-        "bsonType": "string",
-        "enum": [
-          "Инструменты",
-          "Студии",
-          "DJ оборудование",
-          "Клавишные",
-          "Микрофоны",
-          "Аудио"
-        ],
-        "description": "Некорректная категория"
-      },
-      "description": {
-        "bsonType": "string",
-        "minLength": 50,
-        "maxLength": 2000,
-        "description": "Описание должно содержать 50-2000 символов"
-      },
-      "price": {
-        "bsonType": "string",
-        "pattern": "^\\d+(\\s*₸)?\\s*\\/\\s*(час|день|неделя|месяц)$",
-        "description": "Формат: 5000 ₸/час или 5000 ₸/день"
-      },
-      "location": {
-        "bsonType": "string",
-        "minLength": 2,
-        "maxLength": 50,
-        "description": "Локация должна содержать 2-50 символов"
-      },
-      "images": {
-        "bsonType": "array",
-        "items": {
-          "bsonType": "string"
+      "bsonType": "object",
+      "required": ["title", "category", "description", "price", "location", "userId"],
+      "properties": {
+        "title": {
+          "bsonType": "string",
+          "minLength": 10,
+          "maxLength": 100,
+          "description": "Название должно содержать от 10 до 100 символов"
         },
-        "maxItems": 10,
-        "description": "Максимум 10 фотографий"
+        "category": {
+          "enum": ["Инструменты", "Студии", "DJ оборудование", "Клавишные", "Микрофоны", "Аудио"],
+          "description": "Некорректная категория"
+        },
+        "description": {
+          "bsonType": "string",
+          "minLength": 50,
+          "maxLength": 2000,
+          "description": "Описание должно содержать от 50 до 2000 символов"
+        },
+        "price": {
+          "bsonType": "string",
+          "pattern": "^\\d+(\\s*₸)?\\s*\\/\\s*(час|день|неделя|месяц)$",
+          "description": "Формат: 5000 ₸/час или 5000 ₸/день"
+        },
+        "location": {
+          "bsonType": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "description": "Локация обязательна, максимум 50 символов"
+        },
+        "latitude": {
+          "bsonType": ["double", "null"],
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Широта должна быть от -90 до 90"
+        },
+        "longitude": {
+          "bsonType": ["double", "null"],
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Долгота должна быть от -180 до 180"
+        },
+        "address": {
+          "bsonType": ["string", "null"],
+          "maxLength": 200,
+          "description": "Адрес не должен превышать 200 символов"
+        },
+        "images": {
+          "bsonType": ["array", "null"],
+          "items": {
+            "bsonType": "string"
+          },
+          "minItems": 0,
+          "maxItems": 10,
+          "description": "Максимум 10 фотографий"
+        },
+        "userId": {
+          "bsonType": "objectId",
+          "description": "ID пользователя обязателен"
+        },
+        "views": {
+          "bsonType": ["int", "double"],
+          "minimum": 0,
+          "description": "Количество просмотров не может быть отрицательным"
+        },
+        "status": {
+          "enum": ["active", "inactive", "sold", "pending", "rejected"],
+          "description": "Некорректный статус"
+        },
+        "featured": {
+          "bsonType": ["bool", "null"],
+          "description": "Рекламное объявление"
+        },
+        "bookings": {
+          "bsonType": ["array", "null"],
+          "items": {
+            "bsonType": "object",
+            "required": ["renterId", "startDate", "endDate", "period", "price"],
+            "properties": {
+              "renterId": {
+                "bsonType": "objectId",
+                "description": "ID арендатора обязателен"
+              },
+              "startDate": {
+                "bsonType": "date",
+                "description": "Дата начала бронирования"
+              },
+              "endDate": {
+                "bsonType": "date",
+                "description": "Дата окончания бронирования"
+              },
+              "startTime": {
+                "bsonType": ["date", "null"],
+                "description": "Время начала (опционально)"
+              },
+              "endTime": {
+                "bsonType": ["date", "null"],
+                "description": "Время окончания (опционально)"
+              },
+              "period": {
+                "enum": ["hour", "day", "week", "month"],
+                "description": "Некорректный тип периода"
+              },
+              "price": {
+                "bsonType": ["double", "int"],
+                "minimum": 0,
+                "description": "Стоимость не может быть отрицательной"
+              },
+              "status": {
+                "enum": ["pending", "approved", "rejected", "cancelled"],
+                "description": "Некорректный статус бронирования"
+              },
+              "createdAt": {
+                "bsonType": ["date", "null"],
+                "description": "Дата создания бронирования"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "createdAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата создания"
+        },
+        "updatedAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата обновления"
+        }
       },
-      "userId": {
-        "bsonType": "objectId",
-        "description": "ID пользователя"
-      },
-      "views": {
-        "bsonType": "int",
-        "minimum": 0,
-        "description": "Количество просмотров не может быть отрицательным"
-      },
-      "status": {
-        "bsonType": "string",
-        "enum": ["active", "inactive", "sold", "pending", "rejected"],
-        "description": "Статус объявления: active (активно), inactive (неактивно), sold (продано), pending (на модерации), rejected (отклонено)"
-      },
-      "createdAt": {
-        "bsonType": "date"
-      },
-      "updatedAt": {
-        "bsonType": "date"
-      }
+      "additionalProperties": true
     }
-  }
 }
 

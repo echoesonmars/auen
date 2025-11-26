@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { BlurFade } from "@/components/ui/blur-fade";
-import Link from "next/link";
 import { useMetadata } from "@/app/hooks/useMetadata";
 import { getImageUrl } from "@/lib/utils";
 
@@ -398,7 +397,7 @@ function SearchPageContent() {
     <div className="min-h-screen bg-color-lightest">
       {/* Search Header */}
       <BlurFade inView={true} delay={0.1} direction="down">
-        <div className="bg-white border-b border-color-light sticky top-16 z-40">
+        <div className="bg-white border-b border-color-light sticky top-16 z-30">
           <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <form onSubmit={handleSearch}>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -560,49 +559,52 @@ function SearchPageContent() {
                 </div>
               </BlurFade>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                {ads.map((ad, index) => (
-                  <BlurFade key={ad._id} inView={true} delay={0.1 * (index % 6)} direction="up">
-                    <Link
-                      href={`/ads/${ad._id}`}
-                      className="bg-white rounded-xl sm:rounded-2xl border border-color-light overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block"
-                      style={{ boxShadow: '0 4px 20px rgba(63, 114, 175, 0.1)' }}
-                    >
-                      <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative">
-                        {ad.images && ad.images.length > 0 && ad.images[0] ? (
-                          <img
-                            src={getImageUrl(ad.images[0])}
-                            alt={ad.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Если изображение не загрузилось, показываем эмодзи
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                              const parent = target.parentElement;
-                              if (parent) {
-                                const icon = document.createElement("div");
-                                icon.className = "text-5xl sm:text-6xl";
-                                icon.textContent = getCategoryIcon(ad.category);
-                                parent.appendChild(icon);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="text-5xl sm:text-6xl">{getCategoryIcon(ad.category)}</div>
-                        )}
+              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 relative" style={{ zIndex: 1 }}>
+                {ads.map((ad) => (
+                  <a
+                    key={ad._id}
+                    href={`/ads/${ad._id}`}
+                    onClick={(e) => {
+                      // Разрешаем стандартное поведение ссылки
+                      e.stopPropagation();
+                    }}
+                    className="bg-white rounded-xl sm:rounded-2xl border border-color-light overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block w-full h-full cursor-pointer relative"
+                    style={{ boxShadow: '0 4px 20px rgba(63, 114, 175, 0.1)', zIndex: 2 }}
+                  >
+                    <div className="aspect-[3/4] bg-color-lightest flex items-center justify-center overflow-hidden relative">
+                      {ad.images && ad.images.length > 0 && ad.images[0] ? (
+                        <img
+                          src={getImageUrl(ad.images[0])}
+                          alt={ad.title}
+                          className="w-full h-full object-cover pointer-events-none"
+                          onError={(e) => {
+                            // Если изображение не загрузилось, показываем эмодзи
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const icon = document.createElement("div");
+                              icon.className = "text-5xl sm:text-6xl pointer-events-none";
+                              icon.textContent = getCategoryIcon(ad.category);
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="text-5xl sm:text-6xl pointer-events-none">{getCategoryIcon(ad.category)}</div>
+                      )}
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      <h3 className="text-base sm:text-lg font-bold text-color-dark mb-1.5 sm:mb-2 line-clamp-2">
+                        {ad.title}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-color-medium mb-2 sm:mb-3">{ad.location}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg sm:text-xl font-bold text-color-medium">{ad.price}</span>
+                        <span className="text-xs text-color-medium">👁 {ad.views || 0}</span>
                       </div>
-                      <div className="p-3 sm:p-4">
-                        <h3 className="text-base sm:text-lg font-bold text-color-dark mb-1.5 sm:mb-2 line-clamp-2">
-                          {ad.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-color-medium mb-2 sm:mb-3">{ad.location}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-lg sm:text-xl font-bold text-color-medium">{ad.price}</span>
-                          <span className="text-xs text-color-medium">👁 {ad.views || 0}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  </BlurFade>
+                    </div>
+                  </a>
                 ))}
               </div>
             )}

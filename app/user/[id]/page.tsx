@@ -762,12 +762,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             </h2>
             {ads.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {ads.map((ad, index) => (
-                  <BlurFade key={ad._id} inView={true} delay={0.05 * index} direction="up">
-                    <Link
-                      href={`/ads/${ad._id}`}
-                      className="bg-white rounded-xl shadow-lg border border-color-light overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] flex flex-col h-full"
-                    >
+                {ads.map((ad) => (
+                  <a
+                    key={ad._id}
+                    href={`/ads/${ad._id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="bg-white rounded-xl shadow-lg border border-color-light overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] flex flex-col h-full cursor-pointer"
+                  >
                       <div className="aspect-video bg-color-lightest flex items-center justify-center">
                         {ad.images && ad.images.length > 0 ? (
                           <img
@@ -808,8 +811,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
                           </span>
                         </div>
                       </div>
-                    </Link>
-                  </BlurFade>
+                    </a>
                 ))}
               </div>
             ) : (
@@ -826,4 +828,5 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
     </div>
   );
 }
+
 

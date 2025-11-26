@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Ad from "@/models/Ad";
 import { updateAdSchema, validate, formatValidationErrors } from "@/lib/validations";
+import { normalizeCityName, isCityName } from "@/lib/cityNormalizer";
 
 export async function GET(
   request: NextRequest,
@@ -37,6 +38,14 @@ export async function GET(
       images: ad.images || [],
       bookings: ad.bookings || [],
     };
+
+    // Логирование для отладки изображений
+    console.log("GET /api/ads/[id]: Ad ID:", id);
+    console.log("GET /api/ads/[id]: Images from DB:", ad.images);
+    console.log("GET /api/ads/[id]: Images array length:", ad.images?.length || 0);
+    if (ad.images && ad.images.length > 0) {
+      console.log("GET /api/ads/[id]: First image path:", ad.images[0]);
+    }
 
     return NextResponse.json(
       {
@@ -179,10 +188,29 @@ export async function PUT(
       updateData.price = validation.data.price.trim();
     }
     if (validation.data.location !== undefined) {
-      updateData.location = validation.data.location.trim();
+      const location = validation.data.location.trim();
+      if (!isCityName(location)) {
+        return NextResponse.json(
+          {
+            success: false,
+            errors: { location: "Укажите название города, а не адрес или координаты" },
+          },
+          { status: 400 }
+        );
+      }
+      updateData.location = normalizeCityName(location);
+    }
+    if (validation.data.latitude !== undefined) {
+      updateData.latitude = validation.data.latitude ?? null;
+    }
+    if (validation.data.longitude !== undefined) {
+      updateData.longitude = validation.data.longitude ?? null;
+    }
+    if (validation.data.address !== undefined) {
+      updateData.address = validation.data.address?.trim() ?? null;
     }
     if (validation.data.images !== undefined) {
-      updateData.images = validation.data.images;
+      updateData.images = validation.data.images ?? null; // null разрешен согласно валидации
     }
 
     // Обновляем объявление

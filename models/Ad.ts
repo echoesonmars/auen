@@ -18,6 +18,9 @@ export interface IAd extends Document {
   description: string;
   price: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
   images: string[];
   userId: mongoose.Types.ObjectId;
   views: number;
@@ -73,15 +76,34 @@ const AdSchema: Schema = new Schema(
       type: String,
       required: [true, "Локация обязательна"],
       trim: true,
-      minlength: [2, "Укажите локацию"],
+      minlength: [1, "Выберите город"],
       maxlength: [50, "Локация не должна превышать 50 символов"],
+    },
+    latitude: {
+      type: Number,
+      required: false,
+      min: [-90, "Широта должна быть от -90 до 90"],
+      max: [90, "Широта должна быть от -90 до 90"],
+    },
+    longitude: {
+      type: Number,
+      required: false,
+      min: [-180, "Долгота должна быть от -180 до 180"],
+      max: [180, "Долгота должна быть от -180 до 180"],
+    },
+    address: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [200, "Адрес не должен превышать 200 символов"],
     },
     images: {
       type: [String],
       default: [],
       validate: {
-        validator: function (v: string[]) {
-          return v.length <= 10;
+        validator: function (v: string[] | null) {
+          if (v === null) return true;
+          return v.length >= 0 && v.length <= 10;
         },
         message: "Максимум 10 фотографий",
       },
@@ -161,6 +183,7 @@ const AdSchema: Schema = new Schema(
 AdSchema.index({ userId: 1, createdAt: -1 });
 AdSchema.index({ category: 1, status: 1 });
 AdSchema.index({ location: 1 });
+AdSchema.index({ latitude: 1, longitude: 1 });
 AdSchema.index({ createdAt: -1 });
 AdSchema.index({ views: -1 });
 

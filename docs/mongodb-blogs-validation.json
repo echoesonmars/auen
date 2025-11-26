@@ -1,0 +1,63 @@
+{
+  "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["title", "excerpt", "content", "authorId", "category"],
+      "properties": {
+        "title": {
+          "bsonType": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "Заголовок должен содержать от 10 до 200 символов"
+        },
+        "excerpt": {
+          "bsonType": "string",
+          "minLength": 50,
+          "maxLength": 500,
+          "description": "Краткое описание должно содержать от 50 до 500 символов"
+        },
+        "content": {
+          "bsonType": "string",
+          "minLength": 200,
+          "maxLength": 50000,
+          "description": "Содержание должно содержать от 200 до 50000 символов"
+        },
+        "authorId": {
+          "bsonType": "objectId",
+          "description": "ID автора статьи обязателен"
+        },
+        "category": {
+          "enum": ["tips", "reviews", "news", "guides"],
+          "description": "Категория статьи: tips (советы), reviews (обзоры), news (новости) или guides (руководства)"
+        },
+        "image": {
+          "bsonType": ["string", "null"],
+          "description": "URL изображения статьи"
+        },
+        "readTime": {
+          "bsonType": ["int", "double"],
+          "minimum": 1,
+          "maximum": 120,
+          "description": "Время чтения в минутах (от 1 до 120)"
+        },
+        "views": {
+          "bsonType": ["int", "double"],
+          "minimum": 0,
+          "description": "Количество просмотров (не может быть отрицательным)"
+        },
+        "status": {
+          "enum": ["draft", "published"],
+          "description": "Статус статьи: draft (черновик) или published (опубликовано)"
+        },
+        "createdAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата создания"
+        },
+        "updatedAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата обновления"
+        }
+      },
+      "additionalProperties": true
+    }
+}
+

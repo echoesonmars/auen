@@ -32,25 +32,32 @@ export default function LocationsPage() {
     try {
       setLoading(true);
       
-      // Загружаем города
-      const citiesResponse = await fetch("/api/locations?type=city", {
-        cache: 'no-store'
-      });
+      // Загружаем города и категории параллельно
+      const [citiesResponse, categoriesResponse] = await Promise.all([
+        fetch("/api/locations?type=city", { cache: 'no-store' }),
+        fetch("/api/locations?type=category", { cache: 'no-store' })
+      ]);
+
       const citiesResult = await citiesResponse.json();
+      const categoriesResult = await categoriesResponse.json();
+
       if (citiesResult.success) {
         setCities(citiesResult.data || []);
+      } else {
+        console.error("Error loading cities:", citiesResult.message);
+        setCities([]);
       }
 
-      // Загружаем категории
-      const categoriesResponse = await fetch("/api/locations?type=category", {
-        cache: 'no-store'
-      });
-      const categoriesResult = await categoriesResponse.json();
       if (categoriesResult.success) {
         setCategories(categoriesResult.data || []);
+      } else {
+        console.error("Error loading categories:", categoriesResult.message);
+        setCategories([]);
       }
     } catch (error) {
       console.error("Error loading locations:", error);
+      setCities([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -86,7 +93,7 @@ export default function LocationsPage() {
 
   return (
     <div className="min-h-screen bg-color-lightest">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-20">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-20">
         <BlurFade inView={true} delay={0.1} direction="up">
           <TextAnimate
             as="h1"
@@ -118,26 +125,27 @@ export default function LocationsPage() {
             </h2>
             {cities.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {cities.map((city, index) => (
-                  <BlurFade key={city._id || city.name} inView={true} delay={0.05 * index} direction="up">
-                    <Link
-                      href={`/search?location=${encodeURIComponent(city.name)}`}
-                      className="bg-white rounded-xl border border-color-light p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] text-center"
-                    >
-                      <div className="text-4xl sm:text-5xl mb-3">{city.icon || "📍"}</div>
-                      <h3 className="font-bold text-color-dark text-sm sm:text-base mb-1">
-                        {city.name}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-color-medium">
-                        {city.adsCount} мест
-                      </p>
-                    </Link>
-                  </BlurFade>
+                {cities.map((city) => (
+                  <Link
+                    key={city._id || city.name}
+                    href={`/search?location=${encodeURIComponent(city.name)}`}
+                    className="bg-white rounded-xl border border-color-light p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] text-center cursor-pointer"
+                  >
+                    <div className="text-4xl sm:text-5xl mb-3">{city.icon || "📍"}</div>
+                    <h3 className="font-bold text-color-dark text-sm sm:text-base mb-1">
+                      {city.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-color-medium">
+                      {city.adsCount || 0} {city.adsCount === 1 ? 'место' : city.adsCount < 5 ? 'места' : 'мест'}
+                    </p>
+                  </Link>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-color-medium">Пока нет городов</p>
+                <div className="text-6xl mb-4">🏙️</div>
+                <p className="text-color-medium text-lg">Пока нет городов</p>
+                <p className="text-color-medium text-sm mt-2">Города появятся автоматически при создании объявлений</p>
               </div>
             )}
           </div>
@@ -151,41 +159,42 @@ export default function LocationsPage() {
             </h2>
             {categories.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {categories.map((category, index) => (
-                  <BlurFade key={category._id || category.name} inView={true} delay={0.05 * index} direction="up">
-                    <Link
-                      href={`/search?category=${encodeURIComponent(category.name)}`}
-                      className="bg-white rounded-xl border border-color-light p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] flex items-center gap-4"
+                {categories.map((category) => (
+                  <Link
+                    key={category._id || category.name}
+                    href={`/search?category=${encodeURIComponent(category.name)}`}
+                    className="bg-white rounded-xl border border-color-light p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] flex items-center gap-4 cursor-pointer"
+                  >
+                    <div className="text-4xl flex-shrink-0">{category.icon || getCategoryIcon(category.name)}</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-color-dark text-lg mb-1">
+                        {category.name}
+                      </h3>
+                      <p className="text-sm text-color-medium">
+                        {category.adsCount || 0} {category.adsCount === 1 ? 'место' : category.adsCount < 5 ? 'места' : 'мест'}
+                      </p>
+                    </div>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-color-medium flex-shrink-0"
                     >
-                      <div className="text-4xl flex-shrink-0">{category.icon || getCategoryIcon(category.name)}</div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-color-dark text-lg mb-1">
-                          {category.name}
-                        </h3>
-                        <p className="text-sm text-color-medium">
-                          {category.adsCount} мест
-                        </p>
-                      </div>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-color-medium flex-shrink-0"
-                      >
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  </BlurFade>
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </Link>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-color-medium">Пока нет категорий</p>
+                <div className="text-6xl mb-4">📂</div>
+                <p className="text-color-medium text-lg">Пока нет категорий</p>
+                <p className="text-color-medium text-sm mt-2">Категории появятся автоматически при создании объявлений</p>
               </div>
             )}
           </div>

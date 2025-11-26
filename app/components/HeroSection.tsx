@@ -22,12 +22,22 @@ export default function HeroSection() {
   const locationRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
+  const categoryIcons: Record<string, string> = {
+    "Инструменты": "🎸",
+    "Студии": "🎙️",
+    "DJ оборудование": "🎧",
+    "Клавишные": "🎹",
+    "Микрофоны": "🎤",
+    "Аудио": "🔊",
+  };
+
   const [featuredCards, setFeaturedCards] = useState<Array<{
     id: string;
     title: string;
     location: string;
     price: string;
     image: string;
+    category?: string;
     adId?: string;
   }>>([
     {
@@ -36,6 +46,7 @@ export default function HeroSection() {
       location: "Алматы",
       price: "5000₸/день",
       image: "🎸",
+      category: "Инструменты",
     },
     {
       id: "2",
@@ -43,6 +54,7 @@ export default function HeroSection() {
       location: "Астана",
       price: "15000₸/час",
       image: "🎙️",
+      category: "Студии",
     },
     {
       id: "3",
@@ -50,6 +62,7 @@ export default function HeroSection() {
       location: "Шымкент",
       price: "8000₸/день",
       image: "🎧",
+      category: "DJ оборудование",
     },
     {
       id: "4",
@@ -57,6 +70,7 @@ export default function HeroSection() {
       location: "Караганда",
       price: "6000₸/день",
       image: "🥁",
+      category: "Инструменты",
     },
   ]);
 
@@ -68,14 +82,6 @@ export default function HeroSection() {
         const result = await response.json();
         
         if (result.success && result.data && result.data.length > 0) {
-          const categoryIcons: Record<string, string> = {
-            "Инструменты": "🎸",
-            "Студии": "🎙️",
-            "DJ оборудование": "🎧",
-            "Клавишные": "🎹",
-            "Микрофоны": "🎤",
-            "Аудио": "🔊",
-          };
           
           const cards = result.data.map((ad: {
             _id: string;
@@ -89,6 +95,7 @@ export default function HeroSection() {
             title: ad.title,
             location: ad.location,
             price: ad.price,
+            category: ad.category,
             image: ad.images && ad.images.length > 0 
               ? ad.images[0] 
               : categoryIcons[ad.category] || "🎵",
@@ -418,8 +425,18 @@ export default function HeroSection() {
                               className="object-cover"
                               sizes="(max-width: 768px) 100vw, 50vw"
                               priority={index === 0}
-                              onError={() => {
-                                // Fallback handled by parent
+                              onError={(e) => {
+                                console.error("Featured image failed to load:", getImageUrl(card.image));
+                                // Fallback to emoji
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector(".fallback-icon")) {
+                                  const icon = document.createElement("div");
+                                  icon.className = "fallback-icon w-full h-full bg-color-lightest flex items-center justify-center text-5xl absolute inset-0";
+                                  icon.textContent = card.category ? (categoryIcons[card.category] || "🎵") : "🎵";
+                                  parent.appendChild(icon);
+                                }
                               }}
                             />
                           </div>
@@ -676,8 +693,18 @@ export default function HeroSection() {
                               className="object-cover"
                               sizes="(max-width: 768px) 100vw, 50vw"
                               priority={index === 0}
-                              onError={() => {
-                                // Fallback handled by parent
+                              onError={(e) => {
+                                console.error("Featured image failed to load:", getImageUrl(card.image));
+                                // Fallback to emoji
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector(".fallback-icon")) {
+                                  const icon = document.createElement("div");
+                                  icon.className = "fallback-icon w-full h-full bg-color-lightest flex items-center justify-center text-5xl absolute inset-0";
+                                  icon.textContent = card.category ? (categoryIcons[card.category] || "🎵") : "🎵";
+                                  parent.appendChild(icon);
+                                }
                               }}
                             />
                           </div>

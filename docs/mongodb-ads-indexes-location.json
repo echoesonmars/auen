@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "name": "latitude_longitude_index",
+      "key": {
+        "latitude": 1,
+        "longitude": 1
+      },
+      "description": "Индекс для геопространственных запросов"
+    },
+    {
+      "name": "location_coordinates_index",
+      "key": {
+        "location": 1,
+        "latitude": 1,
+        "longitude": 1
+      },
+      "description": "Индекс для поиска объявлений по местоположению"
+    }
+  ]
+}
+

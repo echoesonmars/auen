@@ -1,0 +1,38 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["name", "type"],
+    "properties": {
+      "name": {
+        "bsonType": "string",
+        "minLength": 2,
+        "maxLength": 100,
+        "description": "Название локации должно содержать от 2 до 100 символов"
+      },
+      "type": {
+        "enum": ["city", "category"],
+        "description": "Тип локации: city (город) или category (категория)"
+      },
+      "icon": {
+        "bsonType": ["string", "null"],
+        "maxLength": 10,
+        "description": "Эмодзи/иконка локации (максимум 10 символов)"
+      },
+      "adsCount": {
+        "bsonType": ["int", "double", "null"],
+        "minimum": 0,
+        "description": "Количество объявлений (не может быть отрицательным)"
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"],
+        "description": "Дата создания"
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"],
+        "description": "Дата обновления"
+      }
+    },
+    "additionalProperties": true
+  }
+}
+

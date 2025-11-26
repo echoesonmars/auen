@@ -18,6 +18,9 @@ interface Ad {
   description: string;
   price: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
   images: string[];
   views: number;
   userId: {
@@ -429,6 +432,15 @@ export default function AdDetailPage({ params }: { params: Promise<{ id: string 
                 onBookingSuccess={() => {
                   loadAd(); // Перезагружаем объявление для обновления бронирований
                 }}
+                adLocation={
+                  ad.latitude && ad.longitude
+                    ? {
+                        latitude: ad.latitude,
+                        longitude: ad.longitude,
+                        address: ad.address,
+                      }
+                    : undefined
+                }
               />
             )}
             {/* Price Card */}

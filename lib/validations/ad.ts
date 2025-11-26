@@ -36,12 +36,32 @@ export const createAdSchema = z.object({
     }),
   location: z
     .string()
-    .min(2, "Укажите локацию")
+    .min(1, "Выберите город")
     .max(50, "Локация не должна превышать 50 символов")
     .trim(),
+  latitude: z
+    .number()
+    .min(-90, "Широта должна быть от -90 до 90")
+    .max(90, "Широта должна быть от -90 до 90")
+    .optional()
+    .nullable(),
+  longitude: z
+    .number()
+    .min(-180, "Долгота должна быть от -180 до 180")
+    .max(180, "Долгота должна быть от -180 до 180")
+    .optional()
+    .nullable(),
+  address: z
+    .string()
+    .max(200, "Адрес не должен превышать 200 символов")
+    .trim()
+    .optional()
+    .nullable(),
   images: z
     .array(z.string())
     .max(10, "Максимум 10 фотографий")
+    .min(0, "Минимум 0 фотографий")
+    .nullable()
     .optional()
     .default([]),
 });

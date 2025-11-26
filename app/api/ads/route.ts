@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Ad from "@/models/Ad";
 import { createAdSchema, validate, formatValidationErrors } from "@/lib/validations";
+import { normalizeCityName, isCityName } from "@/lib/cityNormalizer";
 
 interface ApiResponse {
   success: boolean;
@@ -57,6 +58,19 @@ export async function POST(request: NextRequest) {
       }, 400);
     }
 
+    // Дополнительная проверка и нормализация города
+    if (validation.data.location) {
+      const location = validation.data.location.trim();
+      if (!isCityName(location)) {
+        return jsonResponse({
+          success: false,
+          errors: { location: "Укажите название города, а не адрес или координаты" },
+        }, 400);
+      }
+      // Нормализуем город перед сохранением
+      validation.data.location = normalizeCityName(location);
+    }
+
     // Получение userId
     const userId = body.userId;
 
@@ -94,14 +108,23 @@ export async function POST(request: NextRequest) {
         imagesArray: validation.data.images || []
       });
       
+      // Нормализуем название города
+      let normalizedLocation = validation.data.location.trim();
+      if (isCityName(normalizedLocation)) {
+        normalizedLocation = normalizeCityName(normalizedLocation);
+      }
+      
       ad = await Ad.create({
         title: validation.data.title.trim(),
         category: validation.data.category,
         description: validation.data.description.trim(),
         price: validation.data.price.trim(),
-        location: validation.data.location.trim(),
+        location: normalizedLocation,
+        latitude: validation.data.latitude ?? undefined,
+        longitude: validation.data.longitude ?? undefined,
+        address: validation.data.address?.trim() ?? undefined,
         userId: userIdObjectId,
-        images: validation.data.images || [], // Убеждаемся, что images - это массив
+        images: validation.data.images ?? [], // Убеждаемся, что images - это массив (null становится [])
       });
       
       console.log("Ad created successfully:", ad._id);

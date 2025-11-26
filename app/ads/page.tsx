@@ -177,71 +177,68 @@ export default function AdsPage() {
         ) : ads.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-              {ads.map((ad, index) => (
-                <BlurFade
+              {ads.map((ad) => (
+                <a
                   key={ad._id}
-                  inView={true}
-                  delay={index * 0.05}
-                  direction="up"
+                  href={`/ads/${ad._id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="bg-white rounded-xl shadow-lg border border-color-light p-6 hover:shadow-xl transition-all duration-200 flex flex-col h-full group overflow-hidden cursor-pointer"
                 >
-                  <Link
-                    href={`/ads/${ad._id}`}
-                    className="bg-white rounded-xl shadow-lg border border-color-light p-6 hover:shadow-xl transition-all duration-200 flex flex-col h-full group overflow-hidden"
-                  >
-                    <div className="flex-1">
-                      <div className="aspect-video mb-4 flex items-center justify-center bg-color-lightest rounded-lg group-hover:bg-color-light transition-colors overflow-hidden">
-                        {ad.images && ad.images.length > 0 && ad.images[0] ? (
-                          <img
-                            src={getImageUrl(ad.images[0])}
-                            alt={ad.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Если изображение не загрузилось, показываем эмодзи
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                              const parent = target.parentElement;
-                              if (parent) {
-                                const icon = document.createElement("div");
-                                icon.className = "text-4xl sm:text-5xl";
-                                icon.textContent = getCategoryIcon(ad.category);
-                                parent.appendChild(icon);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="text-4xl sm:text-5xl">{getCategoryIcon(ad.category)}</div>
-                        )}
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-color-dark mb-2 line-clamp-2 group-hover:text-color-medium transition-colors">
-                        {ad.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-color-medium mb-3">
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                          <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        <span>{ad.location}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl sm:text-2xl font-bold text-color-medium">
-                          {ad.price}
-                        </span>
-                        <span className="text-xs text-color-medium">
-                          {ad.views} просмотров
-                        </span>
-                      </div>
+                  <div className="flex-1">
+                    <div className="aspect-video mb-4 flex items-center justify-center bg-color-lightest rounded-lg group-hover:bg-color-light transition-colors overflow-hidden">
+                      {ad.images && ad.images.length > 0 && ad.images[0] ? (
+                        <img
+                          src={getImageUrl(ad.images[0])}
+                          alt={ad.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Если изображение не загрузилось, показываем эмодзи
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const icon = document.createElement("div");
+                              icon.className = "text-4xl sm:text-5xl";
+                              icon.textContent = getCategoryIcon(ad.category);
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="text-4xl sm:text-5xl">{getCategoryIcon(ad.category)}</div>
+                      )}
                     </div>
-                  </Link>
-                </BlurFade>
+                    <h3 className="text-lg sm:text-xl font-bold text-color-dark mb-2 line-clamp-2 group-hover:text-color-medium transition-colors">
+                      {ad.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-color-medium mb-3">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                      <span>{ad.location}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl sm:text-2xl font-bold text-color-medium">
+                        {ad.price}
+                      </span>
+                      <span className="text-xs text-color-medium">
+                        {ad.views} просмотров
+                      </span>
+                    </div>
+                  </div>
+                </a>
               ))}
             </div>
 
@@ -289,4 +286,5 @@ export default function AdsPage() {
     </div>
   );
 }
+
 

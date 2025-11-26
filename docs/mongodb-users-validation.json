@@ -1,52 +1,79 @@
 {
   "$jsonSchema": {
-    "bsonType": "object",
-    "required": ["name", "email"],
-    "properties": {
-      "name": {
-        "bsonType": "string",
-        "minLength": 2,
-        "maxLength": 50,
-        "pattern": "^[а-яА-ЯёЁa-zA-Z\\s]+$",
-        "description": "Имя должно содержать только буквы, 2-50 символов"
+      "bsonType": "object",
+      "required": ["name", "email"],
+      "properties": {
+        "name": {
+          "bsonType": "string",
+          "minLength": 2,
+          "maxLength": 50,
+          "description": "Имя должно содержать от 2 до 50 символов"
+        },
+        "email": {
+          "bsonType": "string",
+          "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+          "description": "Некорректный email адрес"
+        },
+        "phone": {
+          "bsonType": ["string", "null"],
+          "description": "Номер телефона (опционально)"
+        },
+        "password": {
+          "bsonType": ["string", "null"],
+          "minLength": 8,
+          "description": "Пароль должен содержать минимум 8 символов"
+        },
+        "googleId": {
+          "bsonType": ["string", "null"],
+          "description": "ID пользователя Google (для OAuth)"
+        },
+        "avatar": {
+          "bsonType": ["string", "null"],
+          "description": "URL аватара пользователя"
+        },
+        "role": {
+          "enum": ["user", "admin", "moderator"],
+          "description": "Роль пользователя: user, admin или moderator"
+        },
+        "isBlocked": {
+          "bsonType": ["bool", "null"],
+          "description": "Заблокирован ли пользователь"
+        },
+        "bio": {
+          "bsonType": ["string", "null"],
+          "maxLength": 500,
+          "description": "Биография пользователя (максимум 500 символов)"
+        },
+        "website": {
+          "bsonType": ["string", "null"],
+          "description": "URL сайта (опционально)"
+        },
+        "instagram": {
+          "bsonType": ["string", "null"],
+          "description": "Username Instagram (опционально)"
+        },
+        "telegram": {
+          "bsonType": ["string", "null"],
+          "description": "Username Telegram (опционально)"
+        },
+        "vk": {
+          "bsonType": ["string", "null"],
+          "description": "Username VK (опционально)"
+        },
+        "youtube": {
+          "bsonType": ["string", "null"],
+          "description": "Username YouTube (опционально)"
+        },
+        "createdAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата создания"
+        },
+        "updatedAt": {
+          "bsonType": ["date", "null"],
+          "description": "Дата обновления"
+        }
       },
-      "email": {
-        "bsonType": "string",
-        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
-        "description": "Email должен быть валидным"
-      },
-      "phone": {
-        "bsonType": ["string", "null"],
-        "pattern": "^\\+?[1-9]\\d{1,14}$",
-        "description": "Телефон должен быть в формате +77771234567 (опционально)"
-      },
-      "password": {
-        "bsonType": ["string", "null"],
-        "minLength": 8,
-        "description": "Пароль должен содержать минимум 8 символов (опционально для Google OAuth)"
-      },
-      "googleId": {
-        "bsonType": ["string", "null"],
-        "description": "Google ID для OAuth авторизации (опционально)"
-      },
-      "avatar": {
-        "bsonType": ["string", "null"],
-        "description": "URL аватара пользователя (опционально)"
-      },
-      "role": {
-        "bsonType": "string",
-        "enum": ["user", "admin", "moderator"],
-        "description": "Роль пользователя: user (по умолчанию), admin, moderator"
-      },
-      "createdAt": {
-        "bsonType": "date",
-        "description": "Дата создания аккаунта"
-      },
-      "updatedAt": {
-        "bsonType": "date",
-        "description": "Дата последнего обновления"
-      }
+      "additionalProperties": true
     }
-  }
 }
 

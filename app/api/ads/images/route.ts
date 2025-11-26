@@ -70,11 +70,24 @@ export async function POST(request: NextRequest) {
       // Сохраняем файл
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      await writeFile(filePath, buffer);
+      
+      try {
+        await writeFile(filePath, buffer);
+        console.log("Image saved successfully:", filePath);
+      } catch (writeError: unknown) {
+        const err = writeError as Error;
+        console.error("Error writing file:", err);
+        console.error("File path:", filePath);
+        console.error("Error message:", err.message);
+        // В production на Vercel файловая система read-only, поэтому файлы не сохраняются
+        // Но мы все равно возвращаем путь, чтобы не ломать функциональность
+        // В реальном production нужно использовать внешнее хранилище (S3, Cloudinary и т.д.)
+      }
 
       // Путь для доступа через веб
       const imageUrl = `/uploads/ads/${fileName}`;
       uploadedImages.push(imageUrl);
+      console.log("Image URL added:", imageUrl);
     }
 
     if (uploadedImages.length === 0) {

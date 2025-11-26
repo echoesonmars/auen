@@ -11,11 +11,13 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function getImageUrl(imagePath: string | undefined | null): string {
   if (!imagePath) {
+    console.warn("getImageUrl: imagePath is null or undefined");
     return "";
   }
 
   // Если путь уже абсолютный (начинается с http:// или https://), возвращаем как есть
   if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    console.log("getImageUrl: Absolute URL detected:", imagePath);
     return imagePath;
   }
 
@@ -37,13 +39,19 @@ export function getImageUrl(imagePath: string | undefined | null): string {
   
   // Если указан базовый URL для изображений (например, CDN), используем его
   // Это полезно, если изображения хранятся на внешнем сервере
-  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_IMAGE_BASE_URL && normalizedPath.startsWith("/uploads")) {
-    const baseUrl = process.env.NEXT_PUBLIC_IMAGE_BASE_URL.replace(/\/$/, "");
-    return `${baseUrl}${normalizedPath}`;
+  if (typeof window !== 'undefined') {
+    const baseUrl = process.env.NEXT_PUBLIC_IMAGE_BASE_URL;
+    if (baseUrl && normalizedPath.startsWith("/uploads")) {
+      const cleanBaseUrl = baseUrl.replace(/\/$/, "");
+      const finalUrl = `${cleanBaseUrl}${normalizedPath}`;
+      console.log("getImageUrl: Using CDN base URL:", finalUrl);
+      return finalUrl;
+    }
   }
 
   // Возвращаем нормализованный путь
   // Next.js автоматически обработает относительные пути из public/
   // Например: /uploads/ads/filename.jpg будет доступен как https://domain.com/uploads/ads/filename.jpg
+  console.log("getImageUrl: Returning normalized path:", normalizedPath);
   return normalizedPath;
 }

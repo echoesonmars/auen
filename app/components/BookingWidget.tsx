@@ -4,6 +4,12 @@ import { useState } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import BookingCalendar from "./BookingCalendar";
 import { useToast } from "@/components/ui/toast";
+import dynamic from "next/dynamic";
+
+// Динамический импорт для избежания SSR проблем с Leaflet
+const RouteMapDynamic = dynamic(() => import("./RouteMap"), {
+  ssr: false,
+});
 
 interface BookingWidgetProps {
   price: string;
@@ -14,6 +20,11 @@ interface BookingWidgetProps {
     status: string;
   }>;
   onBookingSuccess?: () => void;
+  adLocation?: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  };
 }
 
 export default function BookingWidget({
@@ -21,6 +32,7 @@ export default function BookingWidget({
   adId,
   bookings = [],
   onBookingSuccess,
+  adLocation,
 }: BookingWidgetProps) {
   const { showToast } = useToast();
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
@@ -29,6 +41,8 @@ export default function BookingWidget({
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("18:00");
   const [isBooking, setIsBooking] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "courier">("pickup");
+  const [showRouteMap, setShowRouteMap] = useState(false);
 
   // Парсим цену из строки "5000 ₸/день"
   const parsePrice = () => {
@@ -115,6 +129,7 @@ export default function BookingWidget({
           endTime: periodType === "hour" ? endDateTime.toISOString() : undefined,
           periodType,
           totalPrice,
+          deliveryMethod,
         }),
       });
 
@@ -124,6 +139,7 @@ export default function BookingWidget({
         showToast("Бронирование успешно создано!", "success");
         setSelectedStartDate(null);
         setSelectedEndDate(null);
+        setShowRouteMap(false);
         onBookingSuccess?.();
         // Перенаправляем на страницу детального бронирования
         if (result.data?.bookingId) {
@@ -214,6 +230,53 @@ export default function BookingWidget({
           selectedEndDate={selectedEndDate}
         />
 
+        {/* Delivery method selector */}
+        {selectedStartDate && selectedEndDate && (
+          <div>
+            <label className="block text-sm font-medium text-color-dark mb-2">
+              Способ получения
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("pickup")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  deliveryMethod === "pickup"
+                    ? "bg-color-medium text-white"
+                    : "bg-color-lightest text-color-dark hover:bg-color-light"
+                }`}
+              >
+                Самовывоз
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("courier")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  deliveryMethod === "courier"
+                    ? "bg-color-medium text-white"
+                    : "bg-color-lightest text-color-dark hover:bg-color-light"
+                }`}
+              >
+                Курьер от Auen
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Route Map */}
+        {showRouteMap && selectedStartDate && selectedEndDate && adLocation?.latitude && adLocation?.longitude && (
+          <div className="border-t border-color-light pt-4">
+            <RouteMapDynamic
+              destination={{
+                latitude: adLocation.latitude,
+                longitude: adLocation.longitude,
+                address: adLocation.address,
+              }}
+              deliveryMethod={deliveryMethod}
+            />
+          </div>
+        )}
+
         {/* Price calculation */}
         {selectedStartDate && selectedEndDate && (
           <div className="border-t border-color-light pt-4 space-y-2">
@@ -263,13 +326,37 @@ export default function BookingWidget({
         )}
 
         {/* Book button */}
-        <button
-          onClick={handleBooking}
-          disabled={!selectedStartDate || !selectedEndDate || isBooking}
-          className="w-full bg-color-medium text-white py-3 sm:py-4 rounded-lg font-semibold hover:bg-color-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-        >
-          {isBooking ? "Бронируем..." : "Забронировать"}
-        </button>
+        <div className="space-y-2">
+          {selectedStartDate && selectedEndDate && adLocation?.latitude && adLocation?.longitude && (
+            <button
+              type="button"
+              onClick={() => setShowRouteMap(!showRouteMap)}
+              className="w-full bg-color-lightest text-color-dark py-2 rounded-lg font-medium hover:bg-color-light transition-all border border-color-light flex items-center justify-center gap-2"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              {showRouteMap ? "Скрыть карту" : "Показать маршрут"}
+            </button>
+          )}
+          <button
+            onClick={handleBooking}
+            disabled={!selectedStartDate || !selectedEndDate || isBooking}
+            className="w-full bg-color-medium text-white py-3 sm:py-4 rounded-lg font-semibold hover:bg-color-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+          >
+            {isBooking ? "Бронируем..." : "Забронировать"}
+          </button>
+        </div>
       </div>
     </BlurFade>
   );

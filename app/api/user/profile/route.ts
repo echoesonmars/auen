@@ -66,13 +66,13 @@ export async function PUT(request: NextRequest) {
     const updateData: UpdateData = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.email !== undefined) updateData.email = body.email;
-    if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.bio !== undefined) updateData.bio = body.bio;
-    if (body.website !== undefined) updateData.website = body.website;
-    if (body.instagram !== undefined) updateData.instagram = body.instagram;
-    if (body.telegram !== undefined) updateData.telegram = body.telegram;
-    if (body.vk !== undefined) updateData.vk = body.vk;
-    if (body.youtube !== undefined) updateData.youtube = body.youtube;
+    if (body.phone !== undefined) updateData.phone = body.phone === null ? null : body.phone;
+    if (body.bio !== undefined) updateData.bio = body.bio === null ? null : body.bio;
+    if (body.website !== undefined) updateData.website = body.website === null ? null : body.website;
+    if (body.instagram !== undefined) updateData.instagram = body.instagram === null ? null : body.instagram;
+    if (body.telegram !== undefined) updateData.telegram = body.telegram === null ? null : body.telegram;
+    if (body.vk !== undefined) updateData.vk = body.vk === null ? null : body.vk;
+    if (body.youtube !== undefined) updateData.youtube = body.youtube === null ? null : body.youtube;
 
     const user = await User.findByIdAndUpdate(
       userId,
