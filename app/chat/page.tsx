@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { getImageUrl } from "@/lib/utils";
+import MarkdownMessage from "@/app/components/MarkdownMessage";
 
 interface Message {
   id: string;
@@ -990,7 +991,11 @@ function ChatPageContent() {
                             : "bg-white text-color-dark border border-color-light"
                         }`}
                       >
-                        <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                        {selectedChat === "auen-ai" ? (
+                          <MarkdownMessage content={message.text} className="text-sm" />
+                        ) : (
+                          <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                        )}
                         
                         {/* Отображение объявлений, если они есть */}
                         {message.ads && message.ads.length > 0 && (
@@ -1254,7 +1259,11 @@ function ChatPageContent() {
                           : "bg-white text-color-dark border border-color-light"
                       }`}
                     >
-                      <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                      {selectedChat === "auen-ai" ? (
+                        <MarkdownMessage content={message.text} className="text-sm" />
+                      ) : (
+                        <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                      )}
                       
                       {/* Отображение объявлений, если они есть */}
                       {message.ads && message.ads.length > 0 && (

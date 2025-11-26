@@ -54,25 +54,32 @@ export async function PUT(request: NextRequest) {
     interface UpdateData {
       name?: string;
       email?: string;
-      phone?: string;
-      bio?: string;
-      website?: string;
-      instagram?: string;
-      telegram?: string;
-      vk?: string;
-      youtube?: string;
+      phone?: string | null;
+      bio?: string | null;
+      website?: string | null;
+      instagram?: string | null;
+      telegram?: string | null;
+      vk?: string | null;
+      youtube?: string | null;
     }
     
+    // Преобразуем пустые строки в null для опциональных полей
+    const normalizeValue = (value: unknown): string | null | undefined => {
+      if (value === undefined) return undefined;
+      if (value === null || value === '') return null;
+      return String(value).trim() || null;
+    };
+    
     const updateData: UpdateData = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.email !== undefined) updateData.email = body.email;
-    if (body.phone !== undefined) updateData.phone = body.phone === null ? null : body.phone;
-    if (body.bio !== undefined) updateData.bio = body.bio === null ? null : body.bio;
-    if (body.website !== undefined) updateData.website = body.website === null ? null : body.website;
-    if (body.instagram !== undefined) updateData.instagram = body.instagram === null ? null : body.instagram;
-    if (body.telegram !== undefined) updateData.telegram = body.telegram === null ? null : body.telegram;
-    if (body.vk !== undefined) updateData.vk = body.vk === null ? null : body.vk;
-    if (body.youtube !== undefined) updateData.youtube = body.youtube === null ? null : body.youtube;
+    if (body.name !== undefined) updateData.name = normalizeValue(body.name) as string | undefined;
+    if (body.email !== undefined) updateData.email = normalizeValue(body.email) as string | undefined;
+    if (body.phone !== undefined) updateData.phone = normalizeValue(body.phone) as string | null | undefined;
+    if (body.bio !== undefined) updateData.bio = normalizeValue(body.bio) as string | null | undefined;
+    if (body.website !== undefined) updateData.website = normalizeValue(body.website) as string | null | undefined;
+    if (body.instagram !== undefined) updateData.instagram = normalizeValue(body.instagram) as string | null | undefined;
+    if (body.telegram !== undefined) updateData.telegram = normalizeValue(body.telegram) as string | null | undefined;
+    if (body.vk !== undefined) updateData.vk = normalizeValue(body.vk) as string | null | undefined;
+    if (body.youtube !== undefined) updateData.youtube = normalizeValue(body.youtube) as string | null | undefined;
 
     const user = await User.findByIdAndUpdate(
       userId,

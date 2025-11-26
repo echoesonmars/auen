@@ -567,16 +567,25 @@ export default function ProfilePage() {
                     setIsSaving(true);
 
                     const formData = new FormData(e.currentTarget);
+                    
+                    // Преобразуем пустые строки в null для опциональных полей
+                    const getValueOrNull = (value: FormDataEntryValue | null): string | null => {
+                      if (!value || (typeof value === 'string' && value.trim() === '')) {
+                        return null;
+                      }
+                      return typeof value === 'string' ? value.trim() : String(value);
+                    };
+                    
                     const updateData = {
-                      name: formData.get("name"),
-                      email: formData.get("email"),
-                      phone: formData.get("phone"),
-                      bio: formData.get("bio"),
-                      website: formData.get("website"),
-                      instagram: formData.get("instagram"),
-                      telegram: formData.get("telegram"),
-                      vk: formData.get("vk"),
-                      youtube: formData.get("youtube"),
+                      name: getValueOrNull(formData.get("name")),
+                      email: getValueOrNull(formData.get("email")),
+                      phone: getValueOrNull(formData.get("phone")),
+                      bio: getValueOrNull(formData.get("bio")),
+                      website: getValueOrNull(formData.get("website")),
+                      instagram: getValueOrNull(formData.get("instagram")),
+                      telegram: getValueOrNull(formData.get("telegram")),
+                      vk: getValueOrNull(formData.get("vk")),
+                      youtube: getValueOrNull(formData.get("youtube")),
                       userId: userInfo?.id,
                     };
 

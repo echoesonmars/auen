@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import BookingCalendar from "./BookingCalendar";
 import { useToast } from "@/components/ui/toast";
@@ -43,6 +43,7 @@ export default function BookingWidget({
   const [isBooking, setIsBooking] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "courier">("pickup");
   const [showRouteMap, setShowRouteMap] = useState(false);
+  const [courierDistance, setCourierDistance] = useState<number | null>(null);
 
   // Парсим цену из строки "5000 ₸/день"
   const parsePrice = () => {
@@ -51,6 +52,56 @@ export default function BookingWidget({
   };
 
   const basePrice = parsePrice();
+
+  // Получаем местоположение пользователя для расчета расстояния курьера
+  useEffect(() => {
+    if (deliveryMethod === "courier" && adLocation?.latitude && adLocation?.longitude) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const userLat = position.coords.latitude;
+            const userLon = position.coords.longitude;
+            
+            // Рассчитываем расстояние через OSRM
+            try {
+              const response = await fetch(
+                `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${adLocation.longitude},${adLocation.latitude}?overview=false`
+              );
+              const data = await response.json();
+              if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+                // Расстояние в километрах
+                const distanceKm = data.routes[0].distance / 1000;
+                setCourierDistance(distanceKm);
+              }
+            } catch (error) {
+              console.error("Error calculating distance:", error);
+              // Fallback: используем формулу гаверсинуса для приблизительного расчета
+              if (adLocation.latitude !== undefined && adLocation.longitude !== undefined) {
+                const R = 6371; // Радиус Земли в км
+                const dLat = ((adLocation.latitude - userLat) * Math.PI) / 180;
+                const dLon = ((adLocation.longitude - userLon) * Math.PI) / 180;
+                const a =
+                  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((userLat * Math.PI) / 180) *
+                    Math.cos((adLocation.latitude * Math.PI) / 180) *
+                    Math.sin(dLon / 2) *
+                    Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distanceKm = R * c;
+                setCourierDistance(distanceKm);
+              }
+            }
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+            setCourierDistance(null);
+          }
+        );
+      }
+    } else {
+      setCourierDistance(null);
+    }
+  }, [deliveryMethod, adLocation]);
 
   // Вычисляем стоимость
   const calculatePrice = (): number => {
@@ -82,10 +133,43 @@ export default function BookingWidget({
         1;
     }
 
-    return basePrice * periodCount;
+    const rentalPrice = basePrice * periodCount;
+    
+    // Добавляем стоимость курьера (150тг за километр)
+    const courierPrice = deliveryMethod === "courier" && courierDistance !== null
+      ? Math.ceil(courierDistance * 150)
+      : 0;
+
+    return rentalPrice + courierPrice;
   };
 
   const totalPrice = calculatePrice();
+  const rentalPrice = basePrice * (() => {
+    if (!selectedStartDate || !selectedEndDate) return 0;
+    if (periodType === "hour") {
+      const start = new Date(selectedStartDate);
+      const end = new Date(selectedEndDate);
+      const [startHour, startMin] = startTime.split(":").map(Number);
+      const [endHour, endMin] = endTime.split(":").map(Number);
+      start.setHours(startHour, startMin, 0, 0);
+      end.setHours(endHour, endMin, 0, 0);
+      const diffMs = end.getTime() - start.getTime();
+      return Math.ceil(diffMs / (1000 * 60 * 60));
+    } else if (periodType === "day") {
+      const diffTime = selectedEndDate.getTime() - selectedStartDate.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    } else if (periodType === "week") {
+      const diffTime = selectedEndDate.getTime() - selectedStartDate.getTime();
+      return Math.ceil((diffTime / (1000 * 60 * 60 * 24) + 1) / 7);
+    } else {
+      const start = new Date(selectedStartDate);
+      const end = new Date(selectedEndDate);
+      return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+    }
+  })();
+  const courierPrice = deliveryMethod === "courier" && courierDistance !== null
+    ? Math.ceil(courierDistance * 150)
+    : 0;
 
   const handleDateSelect = (start: Date, end: Date) => {
     setSelectedStartDate(start);
@@ -125,13 +209,24 @@ export default function BookingWidget({
           userId,
           startDate: startDateTime.toISOString(),
           endDate: endDateTime.toISOString(),
-          startTime: periodType === "hour" ? startDateTime.toISOString() : undefined,
-          endTime: periodType === "hour" ? endDateTime.toISOString() : undefined,
+          startTime: periodType === "hour" ? startDateTime.toISOString() : null,
+          endTime: periodType === "hour" ? endDateTime.toISOString() : null,
           periodType,
           totalPrice,
           deliveryMethod,
         }),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || "Ошибка при создании бронирования" };
+        }
+        throw new Error(errorData.message || "Ошибка при создании бронирования");
+      }
 
       const result = await response.json();
 
@@ -146,11 +241,13 @@ export default function BookingWidget({
           window.location.href = `/bookings/${result.data.bookingId}`;
         }
       } else {
-        showToast(result.message || "Ошибка при создании бронирования", "error");
+        const errorMessage = result.message || result.errors?.map((e: { message: string }) => e.message).join(", ") || "Ошибка при создании бронирования";
+        showToast(errorMessage, "error");
       }
     } catch (error) {
       console.error("Error creating booking:", error);
-      showToast("Ошибка при создании бронирования", "error");
+      const errorMessage = error instanceof Error ? error.message : "Ошибка при создании бронирования";
+      showToast(errorMessage, "error");
     } finally {
       setIsBooking(false);
     }
@@ -318,7 +415,17 @@ export default function BookingWidget({
                     )}
               </span>
             </div>
-            <div className="flex justify-between text-lg font-bold text-color-dark">
+            <div className="flex justify-between text-sm text-color-medium">
+              <span>Аренда:</span>
+              <span>{rentalPrice.toLocaleString()} ₸</span>
+            </div>
+            {deliveryMethod === "courier" && courierDistance !== null && (
+              <div className="flex justify-between text-sm text-color-medium">
+                <span>Доставка курьером ({courierDistance.toFixed(1)} км × 150₸):</span>
+                <span>{courierPrice.toLocaleString()} ₸</span>
+              </div>
+            )}
+            <div className="flex justify-between text-lg font-bold text-color-dark pt-2 border-t border-color-light">
               <span>Итого:</span>
               <span>{totalPrice.toLocaleString()} ₸</span>
             </div>

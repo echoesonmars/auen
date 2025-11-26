@@ -90,17 +90,23 @@ export default function HeroSection() {
             price: string;
             category: string;
             images?: string[];
-          }) => ({
-            id: ad._id,
-            title: ad.title,
-            location: ad.location,
-            price: ad.price,
-            category: ad.category,
-            image: ad.images && ad.images.length > 0 
-              ? ad.images[0] 
-              : categoryIcons[ad.category] || "🎵",
-            adId: ad._id,
-          }));
+          }) => {
+            // Определяем изображение: если есть реальные изображения, используем первое, иначе эмодзи
+            const firstImage = ad.images && ad.images.length > 0 ? ad.images[0] : null;
+            const imageUrl = firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/'))
+              ? firstImage
+              : null;
+            
+            return {
+              id: ad._id,
+              title: ad.title,
+              location: ad.location,
+              price: ad.price,
+              category: ad.category,
+              image: imageUrl || (categoryIcons[ad.category] || "🎵"),
+              adId: ad._id,
+            };
+          });
           
           setFeaturedCards(cards);
         }
@@ -415,7 +421,7 @@ export default function HeroSection() {
                       style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}
                       aria-label={`${card.title} в ${card.location}, ${card.price}`}
                     >
-                      {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
+                      {card.image && typeof card.image === 'string' && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
                         <>
                           <div className="relative w-full h-full">
                             <Image
@@ -454,9 +460,23 @@ export default function HeroSection() {
                           </div>
                         </>
                       ) : (
-                        <div className="w-full h-full bg-color-lightest flex items-center justify-center">
-                          <div className="text-5xl">{card.image || "🎵"}</div>
-                        </div>
+                        <>
+                          <div className="w-full h-full bg-color-lightest flex items-center justify-center">
+                            <div className="text-5xl">{card.image || "🎵"}</div>
+                          </div>
+                          {/* Темный градиент снизу */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none transition-opacity duration-300 group-hover:opacity-90"></div>
+                          {/* Текст поверх градиента */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 text-white pointer-events-none">
+                            <h3 className="text-xl font-bold mb-2 transition-transform duration-300 group-hover:translate-y-[-2px]">
+                              {card.title}
+                            </h3>
+                            <p className="text-sm mb-2 opacity-90">{card.location}</p>
+                            <div className="text-2xl font-bold">
+                              {card.price}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </Link>
                   </BlurFade>
@@ -683,7 +703,7 @@ export default function HeroSection() {
                       style={{ boxShadow: '0 10px 40px rgba(63, 114, 175, 0.15)' }}
                       aria-label={`${card.title} в ${card.location}, ${card.price}`}
                     >
-                      {card.image && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
+                      {card.image && typeof card.image === 'string' && (card.image.startsWith('http') || card.image.startsWith('/')) ? (
                         <>
                           <div className="relative w-full h-full">
                             <Image
@@ -722,9 +742,23 @@ export default function HeroSection() {
                           </div>
                         </>
                       ) : (
-                        <div className="w-full h-full bg-color-lightest flex items-center justify-center">
-                          <div className="text-5xl">{card.image || "🎵"}</div>
-                        </div>
+                        <>
+                          <div className="w-full h-full bg-color-lightest flex items-center justify-center">
+                            <div className="text-5xl">{card.image || "🎵"}</div>
+                          </div>
+                          {/* Темный градиент снизу */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none transition-opacity duration-300 group-hover:opacity-90"></div>
+                          {/* Текст поверх градиента */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 text-white pointer-events-none">
+                            <h3 className="text-xl font-bold mb-2 transition-transform duration-300 group-hover:translate-y-[-2px]">
+                              {card.title}
+                            </h3>
+                            <p className="text-sm mb-2 opacity-90">{card.location}</p>
+                            <div className="text-2xl font-bold">
+                              {card.price}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </Link>
                   </div>

@@ -56,39 +56,53 @@ export const updateProfileSchema = z.object({
     .trim()
     .optional(),
   phone: z
-    .string()
-    .regex(/^\+?[1-9]\d{1,14}$/, "Некорректный номер телефона")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^\+?[1-9]\d{1,14}$/.test(val), {
+      message: "Некорректный номер телефона",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   bio: z
-    .string()
-    .max(500, "Описание не должно превышать 500 символов")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || val.length <= 500, {
+      message: "Описание не должно превышать 500 символов",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   website: z
-    .string()
-    .regex(/^https?:\/\/.+/, "Некорректный URL сайта")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^https?:\/\/.+/.test(val), {
+      message: "Некорректный URL сайта",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   instagram: z
-    .string()
-    .regex(/^[a-zA-Z0-9._]+$/, "Некорректный username Instagram")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^[a-zA-Z0-9._]+$/.test(val), {
+      message: "Некорректный username Instagram",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   telegram: z
-    .string()
-    .regex(/^[a-zA-Z0-9_]+$/, "Некорректный username Telegram")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^[a-zA-Z0-9_]+$/.test(val), {
+      message: "Некорректный username Telegram",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   vk: z
-    .string()
-    .regex(/^[a-zA-Z0-9._]+$/, "Некорректный username VK")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^[a-zA-Z0-9._]+$/.test(val), {
+      message: "Некорректный username VK",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
   youtube: z
-    .string()
-    .regex(/^[a-zA-Z0-9._-]+$/, "Некорректный username YouTube")
-    .nullable()
+    .union([z.string(), z.null()])
+    .refine((val) => val === null || val === '' || /^[a-zA-Z0-9._-]+$/.test(val), {
+      message: "Некорректный username YouTube",
+    })
+    .transform((val) => (val === '' ? null : val))
     .optional(),
 });
 
