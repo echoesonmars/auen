@@ -1,0 +1,47 @@
+КОЛЛЕКЦИЯ: ads
+Обновленная валидация для поля images:
+
+{
+  "images": {
+    "bsonType": ["array", "null"],
+    "items": {
+      "bsonType": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "minItems": 0,
+    "maxItems": 10,
+    "description": "Массив путей к изображениям (0-10 элементов, может быть null). Пути могут быть относительными (/uploads/ads/...) или абсолютными (http://...)"
+  }
+}
+
+КОЛЛЕКЦИЯ: users
+Обновленная валидация для поля avatar:
+
+{
+  "avatar": {
+    "bsonType": ["string", "null"],
+    "minLength": 1,
+    "maxLength": 500,
+    "description": "URL аватара пользователя (опционально). Может быть относительным (/uploads/avatars/...) или абсолютным (http://...)"
+  }
+}
+
+ИНСТРУКЦИЯ ПО ОБНОВЛЕНИЮ В COMPASS:
+
+1. Откройте MongoDB Compass
+2. Выберите базу данных "auen"
+3. Для коллекции "ads":
+   - Перейдите в Validation
+   - Найдите поле "images" в properties
+   - Обновите его согласно новой валидации выше
+   - Сохраните изменения
+
+4. Для коллекции "users":
+   - Перейдите в Validation
+   - Найдите поле "avatar" в properties
+   - Обновите его согласно новой валидации выше
+   - Сохраните изменения
+
+ИЛИ используйте команды из mongodb-ads-images-validation-update.js и mongodb-users-avatar-validation-update.js
+

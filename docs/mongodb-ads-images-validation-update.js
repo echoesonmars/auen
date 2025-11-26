@@ -1,0 +1,99 @@
+// MongoDB Shell script для обновления валидации поля images в коллекции ads
+
+// Переключаемся на нужную базу данных
+use auen;
+
+// Обновляем валидацию для коллекции ads
+db.runCommand({
+  collMod: "ads",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["title", "category", "description", "price", "location", "userId"],
+      properties: {
+        title: {
+          bsonType: "string",
+          minLength: 10,
+          maxLength: 100,
+          description: "Название должно содержать 10-100 символов"
+        },
+        category: {
+          bsonType: "string",
+          enum: [
+            "Инструменты",
+            "Студии",
+            "DJ оборудование",
+            "Клавишные",
+            "Микрофоны",
+            "Аудио"
+          ],
+          description: "Некорректная категория"
+        },
+        description: {
+          bsonType: "string",
+          minLength: 50,
+          maxLength: 2000,
+          description: "Описание должно содержать 50-2000 символов"
+        },
+        price: {
+          bsonType: "string",
+          pattern: "^\\d+(\\s*₸)?\\s*\\/\\s*(час|день|неделя|месяц)$",
+          description: "Формат: 5000 ₸/час или 5000 ₸/день"
+        },
+        location: {
+          bsonType: "string",
+          minLength: 2,
+          maxLength: 50,
+          description: "Локация должна содержать 2-50 символов"
+        },
+        images: {
+          bsonType: ["array", "null"],
+          items: {
+            bsonType: "string",
+            minLength: 1,
+            maxLength: 500
+          },
+          minItems: 0,
+          maxItems: 10,
+          description: "Массив путей к изображениям (0-10 элементов, может быть null). Пути могут быть относительными (/uploads/ads/...) или абсолютными (http://...)"
+        },
+        userId: {
+          bsonType: "objectId",
+          description: "ID пользователя"
+        },
+        views: {
+          bsonType: "int",
+          minimum: 0,
+          description: "Количество просмотров не может быть отрицательным"
+        },
+        status: {
+          bsonType: "string",
+          enum: ["active", "inactive", "sold", "pending", "rejected"],
+          description: "Статус объявления"
+        },
+        featured: {
+          bsonType: "bool",
+          description: "Показывать ли объявление в рекламной галерее"
+        },
+        createdAt: {
+          bsonType: ["date", "null"],
+          description: "Дата создания"
+        },
+        updatedAt: {
+          bsonType: ["date", "null"],
+          description: "Дата обновления"
+        }
+      },
+      additionalProperties: true
+    }
+  },
+  validationLevel: "moderate",
+  validationAction: "error"
+});
+
+print("Валидация для коллекции ads обновлена. Поле images теперь поддерживает:");
+print("- null значение");
+print("- пустой массив []");
+print("- массив строк с путями к изображениям (0-10 элементов)");
+print("- пути могут быть относительными (/uploads/ads/...) или абсолютными (http://...)");
+

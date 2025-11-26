@@ -102,10 +102,13 @@
       "images": {
         "bsonType": ["array", "null"],
         "items": {
-          "bsonType": "string"
+          "bsonType": "string",
+          "minLength": 1,
+          "maxLength": 500
         },
+        "minItems": 0,
         "maxItems": 10,
-        "description": "Массив путей к изображениям (максимум 10)"
+        "description": "Массив путей к изображениям (0-10 элементов, может быть null). Пути могут быть относительными (/uploads/ads/...) или абсолютными (http://...)"
       },
       "userId": {
         "bsonType": "objectId"
