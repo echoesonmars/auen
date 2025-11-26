@@ -3,6 +3,16 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+// Настройка Cloudinary
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,15 +91,63 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const fileExtension = file.name.split(".").pop() || "jpg";
     const fileName = `${userId}-${timestamp}.${fileExtension}`;
-    const filePath = join(uploadsDir, fileName);
 
     // Сохраняем файл
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
+    
+    let avatarUrl: string;
 
-    // Путь для доступа через веб
-    const avatarUrl = `/uploads/avatars/${fileName}`;
+    // Используем Cloudinary, если настроен (в production на Vercel файловая система read-only)
+    const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && 
+                         process.env.CLOUDINARY_API_KEY && 
+                         process.env.CLOUDINARY_API_SECRET;
+    
+    if (useCloudinary) {
+      try {
+        // Конвертируем buffer в base64 для Cloudinary
+        const base64Image = buffer.toString("base64");
+        const dataUri = `data:${file.type};base64,${base64Image}`;
+        
+        // Загружаем в Cloudinary
+        const result = await cloudinary.uploader.upload(dataUri, {
+          folder: "auen/avatars",
+          public_id: `${userId}-${timestamp}`,
+          resource_type: "image",
+          overwrite: true, // Перезаписываем старый аватар пользователя
+        });
+        
+        avatarUrl = result.secure_url;
+        console.log("Avatar uploaded to Cloudinary:", avatarUrl);
+      } catch (cloudinaryError: unknown) {
+        const err = cloudinaryError as Error;
+        console.error("Cloudinary upload error:", err);
+        throw new Error(`Ошибка загрузки в Cloudinary: ${err.message}`);
+      }
+    } else {
+      // Локальное хранилище для development
+      const filePath = join(uploadsDir, fileName);
+      
+      try {
+        await writeFile(filePath, buffer);
+        avatarUrl = `/uploads/avatars/${fileName}`;
+      } catch (writeError: unknown) {
+        const err = writeError as Error;
+        console.error("Error writing file:", err);
+        
+        // Если Cloudinary не настроен и файл не сохранился, возвращаем ошибку
+        if (!useCloudinary) {
+          const isVercel = process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_URL;
+          const errorMessage = isVercel 
+            ? "Файловая система недоступна на Vercel. Пожалуйста, настройте Cloudinary: добавьте переменные окружения CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY и CLOUDINARY_API_SECRET в настройках проекта Vercel."
+            : "Не удалось сохранить файл. Проверьте права доступа к файловой системе.";
+          throw new Error(errorMessage);
+        }
+        
+        // Если Cloudinary настроен, но мы пытались сохранить локально, пробуем Cloudinary
+        avatarUrl = `/uploads/avatars/${fileName}`;
+      }
+    }
 
     // Обновляем пользователя в БД
     const user = await User.findByIdAndUpdate(

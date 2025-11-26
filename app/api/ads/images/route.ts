@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+// Настройка Cloudinary
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -65,27 +75,65 @@ export async function POST(request: NextRequest) {
       const randomString = Math.random().toString(36).substring(2, 15);
       const fileExtension = file.name.split(".").pop() || "jpg";
       const fileName = `${timestamp}-${randomString}.${fileExtension}`;
-      const filePath = join(uploadsDir, fileName);
 
       // Сохраняем файл
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       
-      try {
-        await writeFile(filePath, buffer);
-        console.log("Image saved successfully:", filePath);
-      } catch (writeError: unknown) {
-        const err = writeError as Error;
-        console.error("Error writing file:", err);
-        console.error("File path:", filePath);
-        console.error("Error message:", err.message);
-        // В production на Vercel файловая система read-only, поэтому файлы не сохраняются
-        // Но мы все равно возвращаем путь, чтобы не ломать функциональность
-        // В реальном production нужно использовать внешнее хранилище (S3, Cloudinary и т.д.)
+      let imageUrl: string;
+
+      // Используем Cloudinary, если настроен (в production на Vercel файловая система read-only)
+      const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && 
+                           process.env.CLOUDINARY_API_KEY && 
+                           process.env.CLOUDINARY_API_SECRET;
+      
+      if (useCloudinary) {
+        try {
+          // Конвертируем buffer в base64 для Cloudinary
+          const base64Image = buffer.toString("base64");
+          const dataUri = `data:${file.type};base64,${base64Image}`;
+          
+          // Загружаем в Cloudinary
+          const result = await cloudinary.uploader.upload(dataUri, {
+            folder: "auen/ads",
+            public_id: fileName.replace(/\.[^/.]+$/, ""), // убираем расширение
+            resource_type: "image",
+            overwrite: false,
+          });
+          
+          imageUrl = result.secure_url;
+          console.log("Image uploaded to Cloudinary:", imageUrl);
+        } catch (cloudinaryError: unknown) {
+          const err = cloudinaryError as Error;
+          console.error("Cloudinary upload error:", err);
+          throw new Error(`Ошибка загрузки в Cloudinary: ${err.message}`);
+        }
+      } else {
+        // Локальное хранилище для development
+        const filePath = join(uploadsDir, fileName);
+        
+        try {
+          await writeFile(filePath, buffer);
+          console.log("Image saved locally:", filePath);
+          imageUrl = `/uploads/ads/${fileName}`;
+        } catch (writeError: unknown) {
+          const err = writeError as Error;
+          console.error("Error writing file:", err);
+          
+          // Если Cloudinary не настроен и файл не сохранился, возвращаем ошибку
+          if (!useCloudinary) {
+            const isVercel = process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_URL;
+            const errorMessage = isVercel 
+              ? "Файловая система недоступна на Vercel. Пожалуйста, настройте Cloudinary: добавьте переменные окружения CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY и CLOUDINARY_API_SECRET в настройках проекта Vercel."
+              : "Не удалось сохранить файл. Проверьте права доступа к файловой системе.";
+            throw new Error(errorMessage);
+          }
+          
+          // Если Cloudinary настроен, но мы пытались сохранить локально, пробуем Cloudinary
+          imageUrl = `/uploads/ads/${fileName}`;
+        }
       }
 
-      // Путь для доступа через веб
-      const imageUrl = `/uploads/ads/${fileName}`;
       uploadedImages.push(imageUrl);
       console.log("Image URL added:", imageUrl);
     }

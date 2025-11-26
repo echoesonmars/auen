@@ -37,6 +37,11 @@ export function getImageUrl(imagePath: string | undefined | null): string {
   // Пути типа /uploads/ads/filename.jpg должны работать
   // Next.js автоматически обслуживает файлы из public/ через статический сервер
   
+  // Если путь уже является полным URL (например, из Cloudinary), возвращаем как есть
+  if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
+    return normalizedPath;
+  }
+
   // Если указан базовый URL для изображений (например, CDN), используем его
   // Это полезно, если изображения хранятся на внешнем сервере
   if (typeof window !== 'undefined') {
