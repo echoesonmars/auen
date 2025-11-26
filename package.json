@@ -10,7 +10,8 @@
     "create-collections": "npx tsx scripts/create-collections.ts",
     "check-collections": "npx tsx scripts/check-collections.ts",
     "set-admin": "npx tsx scripts/set-admin.ts",
-    "normalize-cities": "npx tsx scripts/normalize-cities.ts"
+    "normalize-cities": "npx tsx scripts/normalize-cities.ts",
+    "migrate-images": "npx tsx scripts/migrate-images-to-cloudinary.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
