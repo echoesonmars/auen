@@ -3,6 +3,9 @@ import { registerSchema, loginSchema, updateProfileSchema } from "./user";
 import { createAdSchema, updateAdSchema } from "./ad";
 import { createMessageSchema } from "./message";
 import { createReviewSchema, updateReviewSchema } from "./review";
+import { createBlogSchema, updateBlogSchema } from "./blog";
+import { createLocationSchema, updateLocationSchema } from "./location";
+import { createBookingSchema, updateBookingSchema } from "./booking";
 
 // Экспорт всех схем
 export {
@@ -14,6 +17,12 @@ export {
   createMessageSchema,
   createReviewSchema,
   updateReviewSchema,
+  createBlogSchema,
+  updateBlogSchema,
+  createLocationSchema,
+  updateLocationSchema,
+  createBookingSchema,
+  updateBookingSchema,
 };
 
 // Утилита для валидации с обработкой ошибок

@@ -100,11 +100,12 @@
         "maxLength": 50
       },
       "images": {
-        "bsonType": "array",
+        "bsonType": ["array", "null"],
         "items": {
           "bsonType": "string"
         },
-        "maxItems": 10
+        "maxItems": 10,
+        "description": "Массив путей к изображениям (максимум 10)"
       },
       "userId": {
         "bsonType": "objectId"

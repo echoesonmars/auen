@@ -126,12 +126,12 @@
           "description": "Локация должна содержать 2-50 символов"
         },
         "images": {
-          "bsonType": "array",
+          "bsonType": ["array", "null"],
           "items": {
             "bsonType": "string"
           },
           "maxItems": 10,
-          "description": "Максимум 10 фотографий"
+          "description": "Массив путей к изображениям (максимум 10, может быть null)"
         },
         "userId": {
           "bsonType": "objectId",

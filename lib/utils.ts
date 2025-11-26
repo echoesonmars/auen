@@ -25,6 +25,11 @@ export function getImageUrl(imagePath: string | undefined | null): string {
     return imagePath;
   }
 
+  // Если путь не начинается с /, но содержит uploads, добавляем /
+  if (imagePath.includes("uploads")) {
+    return `/${imagePath}`;
+  }
+
   // Если путь не начинается с /, добавляем его
   return `/${imagePath}`;
 }

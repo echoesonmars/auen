@@ -28,7 +28,7 @@ interface Booking {
   startTime?: string;
   endTime?: string;
   period: 'hour' | 'day' | 'week' | 'month';
-  price: number;
+  price?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   createdAt: string;
 }
@@ -65,7 +65,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       const result = await response.json();
 
       if (result.success) {
-        setBooking(result.data);
+        // Убеждаемся, что price всегда имеет значение
+        const bookingData = {
+          ...result.data,
+          price: result.data.price || 0,
+        };
+        setBooking(bookingData);
         // Проверяем, является ли пользователь владельцем объявления
         const adOwnerId = result.data.adId?.userId?._id?.toString() || result.data.adId?.userId?.toString();
         setIsOwner(userId === adOwnerId);
@@ -171,7 +176,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       <div className="min-h-screen bg-color-lightest pt-20 pb-10">
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-color-medium border-t-transparent"></div>
+            <div className="flex justify-center items-center space-x-2">
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
             <p className="mt-4 text-color-medium">Загрузка...</p>
           </div>
         </div>
@@ -272,7 +281,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
                   <div>
                     <p className="text-sm text-color-medium mb-1">Стоимость</p>
-                    <p className="text-2xl font-bold text-color-medium">{booking.price.toLocaleString()} ₸</p>
+                    <p className="text-2xl font-bold text-color-medium">{(booking.price || 0).toLocaleString()} ₸</p>
                   </div>
 
                   <div>

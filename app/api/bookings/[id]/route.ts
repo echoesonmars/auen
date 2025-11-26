@@ -72,7 +72,12 @@ export async function GET(
     // Получаем информацию об арендаторе
     const renterId = booking.renterId ? (typeof booking.renterId === 'object' && 'toString' in booking.renterId ? booking.renterId.toString() : String(booking.renterId)) : '';
     const User = (await import("@/models/User")).default;
-    const renter = await User.findById(renterId).select("name email phone").lean();
+    let renter = null;
+    
+    // Проверяем валидность renterId перед запросом
+    if (renterId && mongoose.Types.ObjectId.isValid(renterId)) {
+      renter = await User.findById(renterId).select("name email phone").lean();
+    }
 
     return NextResponse.json({
       success: true,
@@ -86,14 +91,14 @@ export async function GET(
           location: ad.location,
           userId: ad.userId,
         },
-        renterId: renter || { _id: renterId, name: "Неизвестно", email: "" },
+        renterId: renter || { _id: renterId || "", name: "Неизвестно", email: "" },
         startDate: booking.startDate,
         endDate: booking.endDate,
         startTime: booking.startTime,
         endTime: booking.endTime,
         period: booking.period,
-        price: booking.price,
-        status: booking.status,
+        price: booking.price || 0,
+        status: booking.status || "pending",
         createdAt: booking.createdAt || ad.createdAt,
       },
     });

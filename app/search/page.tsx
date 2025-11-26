@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { BlurFade } from "@/components/ui/blur-fade";
 import Link from "next/link";
 import { useMetadata } from "@/app/hooks/useMetadata";
@@ -41,6 +42,7 @@ function SearchPageContent() {
   const cities = [
     "Алматы",
     "Астана",
+    "Нур-Султан",
     "Шымкент",
     "Караганда",
     "Актобе",
@@ -59,7 +61,73 @@ function SearchPageContent() {
     "Кокшетау",
     "Талдыкорган",
     "Экибастуз",
+    "Жезказган",
+    "Кентау",
+    "Балхаш",
+    "Рудный",
+    "Сатпаев",
+    "Каскелен",
+    "Капшагай",
+    "Риддер",
+    "Эмба",
+    "Жанаозен",
+    "Аральск",
+    "Аксу",
+    "Степногорск",
+    "Щучинск",
+    "Жаркент",
+    "Алтай",
+    "Аягоз",
+    "Зыряновск",
+    "Ленгер",
+    "Шардара",
+    "Акколь",
+    "Есик",
+    "Текели",
+    "Шалкар",
+    "Житикара",
+    "Атбасар",
+    "Макинск",
+    "Серебрянск",
+    "Курчатов",
+    "Приозерск",
+    "Аксай",
+    "Арыс",
+    "Байконур",
+    "Жанатас",
+    "Каратау",
+    "Кульсары",
+    "Лисаковск",
+    "Сарканд",
+    "Тайынша",
+    "Талгар",
+    "Уштобе",
+    "Хромтау",
+    "Шахтинск",
+    "Шу",
+    "Алга",
+    "Аркалык",
+    "Булаево",
+    "Державинск",
+    "Ерейментау",
+    "Зайсан",
+    "Казалинск",
+    "Кандыагаш",
+    "Каражал",
+    "Каркаралинск",
+    "Качар",
+    "Кызылжар",
+    "Мамлютка",
+    "Осакаровка",
+    "Сарань",
+    "Степняк",
+    "Форт-Шевченко",
+    "Чарск",
   ];
+
+  const [locationSearchQuery, setLocationSearchQuery] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   const categories = [
     { 
@@ -107,20 +175,88 @@ function SearchPageContent() {
 
   useMetadata(pageTitle, pageDescription);
 
+  // AI suggestions for location search
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
+    if (locationSearchQuery.length > 2 && isLocationOpen) {
+      const timeoutId = setTimeout(async () => {
+        setIsLoadingSuggestions(true);
+        try {
+          const response = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: `Предложи города Казахстана похожие на "${locationSearchQuery}". Верни только названия городов через запятую, без дополнительного текста.`,
+            }),
+          });
+
+          const result = await response.json();
+          if (result.success && result.data?.message) {
+            const suggestions = result.data.message
+              .split(/[,，]/)
+              .map((s: string) => s.trim())
+              .filter((s: string) => s.length > 0 && cities.some(city => city.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(city.toLowerCase())))
+              .slice(0, 5);
+            setAiSuggestions(suggestions);
+          }
+        } catch {
+          // Ignore AI errors, just don't show suggestions
+        } finally {
+          setIsLoadingSuggestions(false);
+        }
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setAiSuggestions([]);
+    }
+  }, [locationSearchQuery, isLocationOpen, cities]);
+
+  // Close location modal and prevent scrollbar shift
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isLocationOpen) {
         setIsLocationOpen(false);
+        setLocationSearchQuery("");
       }
     };
 
     if (isLocationOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      // Calculate scrollbar width BEFORE hiding it
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      
+      // Save original styles
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyPaddingRight = document.body.style.paddingRight;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlOverflowX = document.documentElement.style.overflowX;
+      
+      // Hide scrollbars
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.overflowX = 'hidden';
+      
+      // Compensate for scrollbar width - apply to body only (more reliable)
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+      
+      document.addEventListener("keydown", handleEscape);
+      
+      return () => {
+        document.removeEventListener("keydown", handleEscape);
+        
+        // Restore original styles
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.paddingRight = originalBodyPaddingRight;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.overflowX = originalHtmlOverflowX;
+        
+        setLocationSearchQuery("");
+        setAiSuggestions([]);
+      };
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
   }, [isLocationOpen]);
 
   const loadAds = async () => {
@@ -332,38 +468,7 @@ function SearchPageContent() {
                       />
                     </svg>
                   </button>
-                  {isLocationOpen && (
-                    <div className="absolute top-full right-0 mt-2 w-full bg-white rounded-lg shadow-xl border border-color-light z-50 max-h-60 overflow-y-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedLocation("Казахстан");
-                          setIsLocationOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-color-lightest transition-colors ${
-                          selectedLocation === "Казахстан" ? "bg-color-lightest font-semibold" : ""
-                        }`}
-                      >
-                        Казахстан
-                      </button>
-                      {cities.map((city) => (
-                        <button
-                          key={city}
-                          type="button"
-                          onClick={() => {
-                            setSelectedLocation(city);
-                            setIsLocationOpen(false);
-                          }}
-                          className={`w-full px-4 py-2 text-left text-sm hover:bg-color-lightest transition-colors ${
-                            selectedLocation === city ? "bg-color-lightest font-semibold" : ""
-                          }`}
-                        >
-                          {city}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  </div>
+                </div>
                   <button
                     type="button"
                     onClick={() => setIsMobileFiltersOpen(true)}
@@ -425,7 +530,11 @@ function SearchPageContent() {
             {/* Ads Grid */}
             {loading ? (
               <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-color-medium border-t-transparent"></div>
+                <div className="flex justify-center items-center space-x-2">
+                  <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
                 <p className="mt-4 text-color-medium">Загрузка...</p>
               </div>
             ) : error ? (
@@ -530,6 +639,204 @@ function SearchPageContent() {
           })}
         </div>
       </div>
+
+      {/* Location Selection Modal */}
+      <AnimatePresence>
+        {isLocationOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
+              onClick={() => {
+                setIsLocationOpen(false);
+                setLocationSearchQuery("");
+              }}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none"
+              style={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 50 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-color-light">
+                  <h2 className="text-2xl font-bold text-color-dark mb-2">Выберите город</h2>
+                  <p className="text-sm text-color-medium">Найдите город или выберите из списка</p>
+                </div>
+
+                {/* Search Input */}
+                <div className="p-4 border-b border-color-light">
+                  <div className="relative">
+                    <svg
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-color-medium"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Поиск города..."
+                      value={locationSearchQuery}
+                      onChange={(e) => setLocationSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-color-light focus:border-color-medium focus:ring-2 focus:ring-color-medium/20 outline-none text-color-dark placeholder:text-color-medium"
+                      autoFocus
+                    />
+                    {isLoadingSuggestions && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="flex justify-center items-center space-x-1">
+                          <div className="w-1.5 h-1.5 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-1.5 h-1.5 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-1.5 h-1.5 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Suggestions */}
+                  {aiSuggestions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 space-y-1"
+                    >
+                      <p className="text-xs text-color-medium mb-2 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        AI подсказки:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {aiSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              const matchedCity = cities.find(city => 
+                                city.toLowerCase().includes(suggestion.toLowerCase()) || 
+                                suggestion.toLowerCase().includes(city.toLowerCase())
+                              );
+                              if (matchedCity) {
+                                setSelectedLocation(matchedCity);
+                                setIsLocationOpen(false);
+                                setLocationSearchQuery("");
+                              }
+                            }}
+                            className="px-3 py-1.5 text-xs bg-color-lightest text-color-dark rounded-lg hover:bg-color-light transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Cities List */}
+                <div className="flex-1 overflow-y-auto overscroll-contain">
+                  <div className="p-2">
+                    {/* Казахстан option */}
+                    <button
+                      role="option"
+                      aria-selected={selectedLocation === "Казахстан"}
+                      onClick={() => {
+                        setSelectedLocation("Казахстан");
+                        setIsLocationOpen(false);
+                        setLocationSearchQuery("");
+                      }}
+                      className={`w-full px-4 py-3 text-left rounded-lg hover:bg-color-lightest transition-colors focus:outline-none ${
+                        selectedLocation === "Казахстан" ? "bg-color-lightest font-semibold" : ""
+                      } ${locationSearchQuery && !"Казахстан".toLowerCase().includes(locationSearchQuery.toLowerCase()) ? "hidden" : ""}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5 text-color-medium" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-medium">Казахстан</span>
+                        {selectedLocation === "Казахстан" && (
+                          <svg className="w-5 h-5 text-color-medium ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Cities */}
+                    {cities
+                      .filter(city => 
+                        !locationSearchQuery || 
+                        city.toLowerCase().includes(locationSearchQuery.toLowerCase())
+                      )
+                      .map((city) => (
+                        <button
+                          key={city}
+                          role="option"
+                          aria-selected={selectedLocation === city}
+                          onClick={() => {
+                            setSelectedLocation(city);
+                            setIsLocationOpen(false);
+                            setLocationSearchQuery("");
+                          }}
+                          className={`w-full px-4 py-3 text-left rounded-lg hover:bg-color-lightest transition-colors focus:outline-none ${
+                            selectedLocation === city ? "bg-color-lightest font-semibold" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-color-medium" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>{city}</span>
+                            {selectedLocation === city && (
+                              <svg className="w-5 h-5 text-color-medium ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-color-light flex justify-end">
+                  <button
+                    onClick={() => {
+                      setIsLocationOpen(false);
+                      setLocationSearchQuery("");
+                    }}
+                    className="px-6 py-2 text-color-dark hover:bg-color-lightest rounded-lg transition-colors focus:outline-none"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -539,7 +846,11 @@ export default function SearchPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-color-lightest flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-medium mx-auto mb-4"></div>
+          <div className="flex justify-center items-center space-x-2 mb-4">
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
           <p className="text-color-medium">Загрузка...</p>
         </div>
       </div>

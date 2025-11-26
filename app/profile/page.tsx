@@ -296,10 +296,10 @@ export default function ProfilePage() {
 
           {/* Tabs */}
           <BlurFade inView={true} delay={0.3} direction="up">
-            <div className="flex gap-2 mb-6 border-b border-color-light">
+            <div className="flex gap-1 sm:gap-2 mb-6 border-b border-color-light overflow-x-auto scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
               <button
                 onClick={() => setActiveTab("info")}
-                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === "info"
                     ? "border-color-medium text-color-dark"
                     : "border-transparent text-color-medium hover:text-color-dark"
@@ -309,7 +309,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("ads")}
-                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === "ads"
                     ? "border-color-medium text-color-dark"
                     : "border-transparent text-color-medium hover:text-color-dark"
@@ -319,7 +319,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("bookings")}
-                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === "bookings"
                     ? "border-color-medium text-color-dark"
                     : "border-transparent text-color-medium hover:text-color-dark"
@@ -329,7 +329,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("settings")}
-                className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === "settings"
                     ? "border-color-medium text-color-dark"
                     : "border-transparent text-color-medium hover:text-color-dark"
@@ -482,11 +482,49 @@ export default function ProfilePage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button className="px-4 py-2 rounded-lg border border-color-light text-color-dark hover:bg-color-lightest transition-all duration-200 text-sm font-medium">
+                          <button
+                            onClick={() => router.push(`/ads/${ad.id}/edit`)}
+                            className="px-4 py-2 rounded-lg border border-color-light text-color-dark hover:bg-color-lightest transition-all duration-200 text-sm font-medium"
+                          >
                             Редактировать
                           </button>
-                          <button className="px-4 py-2 rounded-lg bg-color-medium text-white hover:bg-color-dark transition-all duration-200 text-sm font-medium">
+                          <button
+                            onClick={() => router.push(`/ads/${ad.id}`)}
+                            className="px-4 py-2 rounded-lg bg-color-medium text-white hover:bg-color-dark transition-all duration-200 text-sm font-medium"
+                          >
                             Смотреть
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm("Вы уверены, что хотите удалить это объявление?")) {
+                                try {
+                                  const userId = localStorage.getItem("userId");
+                                  if (!userId) {
+                                    showToast("Необходима авторизация", "error");
+                                    return;
+                                  }
+
+                                  const response = await fetch(`/api/ads/${ad.id}?userId=${userId}`, {
+                                    method: "DELETE",
+                                  });
+
+                                  const result = await response.json();
+
+                                  if (result.success) {
+                                    showToast("Объявление успешно удалено", "success");
+                                    loadUserData();
+                                  } else {
+                                    showToast(result.message || "Ошибка при удалении объявления", "error");
+                                  }
+                                } catch (error) {
+                                  console.error("Error deleting ad:", error);
+                                  showToast("Ошибка при удалении объявления", "error");
+                                }
+                              }
+                            }}
+                            className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all duration-200 text-sm font-medium"
+                          >
+                            Удалить
                           </button>
                         </div>
                       </div>

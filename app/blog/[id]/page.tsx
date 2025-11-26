@@ -1,58 +1,86 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 
 interface BlogPost {
-  id: string;
+  _id: string;
   title: string;
   content: string;
-  author: string;
-  date: string;
+  authorId: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
   category: string;
-  image: string;
-  readTime: string;
+  image?: string;
+  readTime: number;
+  views: number;
+  createdAt: string;
 }
 
 export default function BlogPostPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  // Обрабатываем params как Promise или обычный объект
   const resolvedParams = params instanceof Promise ? use(params) : params;
   const id = resolvedParams.id;
   const router = useRouter();
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // В реальном приложении здесь был бы запрос к API
-  const post: BlogPost | null = {
-    id: id,
-    title: "Как выбрать идеальную студию звукозаписи",
-    content: `
-      <p>Выбор студии звукозаписи - это важный шаг для любого музыканта. Правильный выбор может определить успех вашего проекта, в то время как неправильный может привести к разочарованию и лишним затратам.</p>
-      
-      <h2>1. Оборудование</h2>
-      <p>Одним из первых факторов, на которые стоит обратить внимание, является оборудование студии. Современные студии должны иметь профессиональное оборудование, включая качественные микрофоны, предусилители, аудиоинтерфейсы и мониторы.</p>
-      
-      <h2>2. Акустика</h2>
-      <p>Акустика помещения играет критическую роль в качестве записи. Хорошая студия должна иметь профессиональную акустическую обработку, которая позволяет получать чистый звук без лишних отражений и реверберации.</p>
-      
-      <h2>3. Стоимость</h2>
-      <p>Стоимость аренды студии может значительно варьироваться. Важно найти баланс между качеством и доступностью. Не всегда самая дорогая студия - лучший выбор для вашего проекта.</p>
-      
-      <h2>4. Расположение</h2>
-      <p>Удобное расположение студии может сэкономить вам время и нервы, особенно если вы планируете несколько сессий записи.</p>
-      
-      <h2>Заключение</h2>
-      <p>Выбор студии - это индивидуальный процесс, который зависит от ваших потребностей, бюджета и предпочтений. Не торопитесь с решением и обязательно посетите студию лично перед окончательным выбором.</p>
-    `,
-    author: "Айдын Абдуллин",
-    date: "15 января 2025",
-    category: "guides",
-    image: "🎙️",
-    readTime: "5 мин",
+  useEffect(() => {
+    loadBlog();
+  }, [id]);
+
+  const loadBlog = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/blog/${id}`, {
+        cache: 'no-store'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setPost(result.data);
+      } else {
+        setError(result.message || "Статья не найдена");
+      }
+    } catch (error) {
+      console.error("Error loading blog:", error);
+      setError("Ошибка при загрузке статьи");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!post) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-color-lightest flex items-center justify-center">
+        <div className="text-center">
+          <div className="flex justify-center items-center space-x-2 mb-4">
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+          <p className="text-color-medium">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !post) {
     return (
       <div className="min-h-screen bg-color-lightest flex items-center justify-center">
         <div className="text-center">
@@ -96,7 +124,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
         {/* Article Header */}
         <BlurFade inView={true} delay={0.2} direction="up">
           <div className="mb-6 sm:mb-8">
-            <div className="text-8xl mb-6">{post.image}</div>
+            <div className="text-8xl mb-6">{post.image || "📝"}</div>
             <div className="mb-4">
               <span className="inline-block px-4 py-2 bg-color-lightest text-color-medium text-sm font-medium rounded-full">
                 {post.category === "guides" ? "Гайды" : 
@@ -130,12 +158,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span>{post.author}</span>
+                <span>{post.authorId?.name || "Неизвестно"}</span>
               </div>
               <span>•</span>
-              <span>{post.date}</span>
+              <span>{formatDate(post.createdAt)}</span>
               <span>•</span>
-              <span>{post.readTime} чтения</span>
+              <span>{post.readTime} мин чтения</span>
+              <span>•</span>
+              <span>{post.views} просмотров</span>
             </div>
           </div>
         </BlurFade>
@@ -144,44 +174,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
         <BlurFade inView={true} delay={0.3} direction="up">
           <article className="bg-white rounded-xl sm:rounded-2xl border border-color-light p-6 sm:p-8 md:p-12">
             <div
-              className="prose prose-lg max-w-none text-color-dark"
-              dangerouslySetInnerHTML={{ __html: post.content }}
+              className="prose prose-lg max-w-none text-color-dark whitespace-pre-wrap"
               style={{
                 lineHeight: "1.8",
               }}
-            />
-          </article>
-        </BlurFade>
-
-        {/* Related Articles */}
-        <BlurFade inView={true} delay={0.4} direction="up">
-          <div className="mt-12 sm:mt-16 pt-8 sm:pt-12 border-t border-color-light">
-            <h2 className="text-2xl sm:text-3xl font-bold text-color-dark mb-6 sm:mb-8">
-              Читайте также
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <Link
-                href="/blog/2"
-                className="bg-white rounded-xl border border-color-light p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-              >
-                <div className="text-4xl mb-3">🎸</div>
-                <h3 className="text-lg font-bold text-color-dark mb-2">
-                  Топ-10 музыкальных инструментов для начинающих
-                </h3>
-                <p className="text-sm text-color-medium">7 мин чтения</p>
-              </Link>
-              <Link
-                href="/blog/3"
-                className="bg-white rounded-xl border border-color-light p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-              >
-                <div className="text-4xl mb-3">🎧</div>
-                <h3 className="text-lg font-bold text-color-dark mb-2">
-                  Обзор новейшего DJ-оборудования 2025
-                </h3>
-                <p className="text-sm text-color-medium">10 мин чтения</p>
-              </Link>
+            >
+              {post.content}
             </div>
-          </div>
+          </article>
         </BlurFade>
       </div>
     </div>

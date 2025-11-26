@@ -1,24 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useMetadata } from "@/app/hooks/useMetadata";
 
 interface BlogPost {
-  id: string;
+  _id: string;
   title: string;
   excerpt: string;
-  author: string;
-  date: string;
+  authorId: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
   category: string;
-  image: string;
-  readTime: string;
+  image?: string;
+  readTime: number;
+  views: number;
+  createdAt: string;
 }
 
 export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useMetadata(
     "Блог | Auen",
@@ -33,73 +43,39 @@ export default function BlogPage() {
     { id: "guides", name: "Гайды" },
   ];
 
-  const blogPosts: BlogPost[] = [
-    {
-      id: "1",
-      title: "Как выбрать идеальную студию звукозаписи",
-      excerpt: "Руководство по выбору студии, подходящей именно вам. Рассматриваем важные аспекты: оборудование, акустика, стоимость и расположение.",
-      author: "Айдын Абдуллин",
-      date: "15 января 2025",
-      category: "guides",
-      image: "🎙️",
-      readTime: "5 мин",
-    },
-    {
-      id: "2",
-      title: "Топ-10 музыкальных инструментов для начинающих",
-      excerpt: "Разбираем лучшие инструменты для тех, кто только начинает свой путь в музыке. От гитары до синтезатора - что выбрать?",
-      author: "Марат Касымов",
-      date: "12 января 2025",
-      category: "tips",
-      image: "🎸",
-      readTime: "7 мин",
-    },
-    {
-      id: "3",
-      title: "Обзор новейшего DJ-оборудования 2025",
-      excerpt: "Что нового в мире DJ-техники? Разбираем последние модели контроллеров, микшеров и другого профессионального оборудования.",
-      author: "Диана Смагулова",
-      date: "10 января 2025",
-      category: "reviews",
-      image: "🎧",
-      readTime: "10 мин",
-    },
-    {
-      id: "4",
-      title: "Акустика в домашней студии: секреты профессионалов",
-      excerpt: "Как правильно организовать акустику в домашней студии звукозаписи без больших затрат. Практические советы от опытных звукорежиссеров.",
-      author: "Ерлан Жумабеков",
-      date: "8 января 2025",
-      category: "tips",
-      image: "🔊",
-      readTime: "8 мин",
-    },
-    {
-      id: "5",
-      title: "Музыкальная индустрия Казахстана: тенденции 2025",
-      excerpt: "Анализ текущего состояния музыкальной индустрии в Казахстане. Какие направления развиваются, что ждет музыкантов в ближайшем будущем?",
-      author: "Алма Ахметова",
-      date: "5 января 2025",
-      category: "news",
-      image: "📰",
-      readTime: "12 мин",
-    },
-    {
-      id: "6",
-      title: "Как записать первый сингл: пошаговый гайд",
-      excerpt: "Подробное руководство для музыкантов, которые хотят записать свой первый сингл. От подготовки до релиза - все этапы разобраны детально.",
-      author: "Нурлан Токтаров",
-      date: "3 января 2025",
-      category: "guides",
-      image: "🎵",
-      readTime: "15 мин",
-    },
-  ];
+  useEffect(() => {
+    loadBlogs();
+  }, [selectedCategory]);
 
-  const filteredPosts =
-    selectedCategory === "all"
-      ? blogPosts
-      : blogPosts.filter((post) => post.category === selectedCategory);
+  const loadBlogs = async () => {
+    try {
+      setLoading(true);
+      const categoryParam = selectedCategory === "all" ? "" : `&category=${selectedCategory}`;
+      const response = await fetch(`/api/blog?status=published${categoryParam}`, {
+        cache: 'no-store'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setBlogPosts(result.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading blogs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const filteredPosts = blogPosts;
 
   return (
     <div className="min-h-screen bg-color-lightest">
@@ -146,58 +122,87 @@ export default function BlogPage() {
           </div>
         </BlurFade>
 
+        {/* Create Blog Button */}
+        <BlurFade inView={true} delay={0.25} direction="up">
+          <div className="mb-8 flex justify-end">
+            <button
+              onClick={() => {
+                const userId = localStorage.getItem("userId");
+                if (!userId) {
+                  router.push("/login?redirect=/blog/create");
+                } else {
+                  router.push("/blog/create");
+                }
+              }}
+              className="px-6 py-3 bg-color-medium text-white rounded-lg font-semibold hover:bg-color-dark transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              + Написать статью
+            </button>
+          </div>
+        </BlurFade>
+
         {/* Blog Posts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredPosts.map((post, index) => (
-            <BlurFade key={post.id} inView={true} delay={0.1 * (index % 3)} direction="up">
-              <Link href={`/blog/${post.id}`}>
-                <article className="bg-white rounded-xl sm:rounded-2xl border border-color-light overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] h-full flex flex-col">
-                  <div className="p-6 sm:p-8 flex-1 flex flex-col">
-                    <div className="text-6xl mb-4 flex-shrink-0">{post.image}</div>
-                    
-                    <div className="mb-3">
-                      <span className="inline-block px-3 py-1 bg-color-lightest text-color-medium text-xs font-medium rounded-full">
-                        {categories.find((c) => c.id === post.category)?.name || post.category}
-                      </span>
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-bold text-color-dark mb-3 line-clamp-2">
-                      {post.title}
-                    </h2>
-
-                    <p className="text-color-medium text-sm sm:text-base mb-4 line-clamp-3 flex-1">
-                      {post.excerpt}
-                    </p>
-
-                    <div className="flex items-center justify-between text-xs sm:text-sm text-color-medium pt-4 border-t border-color-light mt-auto">
-                      <div className="flex items-center gap-2">
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        <span>{post.author}</span>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="flex justify-center items-center space-x-2">
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {filteredPosts.map((post, index) => (
+              <BlurFade key={post._id} inView={true} delay={0.1 * (index % 3)} direction="up">
+                <Link href={`/blog/${post._id}`}>
+                  <article className="bg-white rounded-xl sm:rounded-2xl border border-color-light overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] h-full flex flex-col">
+                    <div className="p-6 sm:p-8 flex-1 flex flex-col">
+                      <div className="text-6xl mb-4 flex-shrink-0">{post.image || "📝"}</div>
+                      
+                      <div className="mb-3">
+                        <span className="inline-block px-3 py-1 bg-color-lightest text-color-medium text-xs font-medium rounded-full">
+                          {categories.find((c) => c.id === post.category)?.name || post.category}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span>{post.date}</span>
-                        <span>•</span>
-                        <span>{post.readTime}</span>
+
+                      <h2 className="text-xl sm:text-2xl font-bold text-color-dark mb-3 line-clamp-2">
+                        {post.title}
+                      </h2>
+
+                      <p className="text-color-medium text-sm sm:text-base mb-4 line-clamp-3 flex-1">
+                        {post.excerpt}
+                      </p>
+
+                      <div className="flex items-center justify-between text-xs sm:text-sm text-color-medium pt-4 border-t border-color-light mt-auto">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                          </svg>
+                          <span>{post.authorId?.name || "Неизвестно"}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span>{formatDate(post.createdAt)}</span>
+                          <span>•</span>
+                          <span>{post.readTime} мин</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              </Link>
-            </BlurFade>
-          ))}
-        </div>
+                  </article>
+                </Link>
+              </BlurFade>
+            ))}
+          </div>
+        )}
 
         {/* Empty State */}
         {filteredPosts.length === 0 && (

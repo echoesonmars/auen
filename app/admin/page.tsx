@@ -571,7 +571,11 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-color-lightest flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-medium mx-auto mb-4"></div>
+          <div className="flex justify-center items-center space-x-2 mb-4">
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
           <p className="text-color-medium">Загрузка...</p>
         </div>
       </div>
@@ -653,10 +657,10 @@ export default function AdminPage() {
         {/* Tabs */}
         <BlurFade inView={true} delay={0.2} direction="up">
           <div className="bg-white rounded-xl shadow-lg border border-color-light mb-6">
-            <div className="flex border-b border-color-light">
+            <div className="flex border-b border-color-light overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveTab("stats")}
-                className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "stats"
                     ? "text-color-medium border-b-2 border-color-medium"
                     : "text-color-dark hover:text-color-medium"
@@ -666,7 +670,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setActiveTab("ads")}
-                className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "ads"
                     ? "text-color-medium border-b-2 border-color-medium"
                     : "text-color-dark hover:text-color-medium"
@@ -681,7 +685,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setActiveTab("users")}
-                className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "users"
                     ? "text-color-medium border-b-2 border-color-medium"
                     : "text-color-dark hover:text-color-medium"
@@ -691,7 +695,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setActiveTab("reviews")}
-                className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "reviews"
                     ? "text-color-medium border-b-2 border-color-medium"
                     : "text-color-dark hover:text-color-medium"
@@ -999,6 +1003,14 @@ export default function AdminPage() {
                                     {ad.featured ? "⭐ В галерее" : "⭐ В галерею"}
                                   </button>
                                 </>
+                              )}
+                              {ad.status === "inactive" && (
+                                <button
+                                  onClick={() => updateAdStatus(ad.id, "active")}
+                                  className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                                >
+                                  Активировать
+                                </button>
                               )}
                               <Link
                                 href={`/ads/${ad.id}`}

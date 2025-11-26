@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import Ad from "@/models/Ad";
+import Booking from "@/models/Booking";
+import { createBookingSchema } from "@/lib/validations";
 
 export async function POST(
   request: NextRequest,
@@ -59,80 +61,76 @@ export async function POST(
       );
     }
 
+    // Валидация данных
+    const validationResult = createBookingSchema.safeParse({
+      adId,
+      renterId: userId,
+      ownerId: ad.userId.toString(),
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      periodType,
+      totalPrice,
+      status: "pending",
+    });
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Ошибка валидации",
+          errors: validationResult.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
     // Проверяем конфликты с существующими бронированиями
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    if (ad.bookings && ad.bookings.length > 0) {
-      const hasConflict = ad.bookings.some((booking: {
-        startDate: Date;
-        endDate: Date;
-        status: string;
-      }) => {
-        if (booking.status === "cancelled") return false;
-        const bookingStart = new Date(booking.startDate);
-        const bookingEnd = new Date(booking.endDate);
-        return (
-          (start >= bookingStart && start <= bookingEnd) ||
-          (end >= bookingStart && end <= bookingEnd) ||
-          (start <= bookingStart && end >= bookingEnd)
-        );
-      });
+    const conflictingBookings = await Booking.find({
+      adId: new mongoose.Types.ObjectId(adId),
+      status: { $in: ["pending", "confirmed"] },
+      $or: [
+        {
+          startDate: { $lte: end },
+          endDate: { $gte: start },
+        },
+      ],
+    });
 
-      if (hasConflict) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Выбранные даты уже заняты",
-          },
-          { status: 409 }
-        );
-      }
+    if (conflictingBookings.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Выбранные даты уже заняты",
+        },
+        { status: 409 }
+      );
     }
 
-    // Добавляем бронирование
-    const newBooking = {
+    // Создаем бронирование в отдельной коллекции
+    const booking = await Booking.create({
+      adId: new mongoose.Types.ObjectId(adId),
       renterId: new mongoose.Types.ObjectId(userId),
+      ownerId: ad.userId,
       startDate: start,
       endDate: end,
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
-      period: periodType,
-      price: totalPrice,
-      status: "pending" as const,
-      createdAt: new Date(),
-    };
-
-    ad.bookings = ad.bookings || [];
-    ad.bookings.push(newBooking);
-
-    const savedAd = await ad.save();
-    
-    // Получаем ID созданного бронирования
-    const bookings = savedAd.bookings || [];
-    const createdBooking = bookings.length > 0 ? bookings[bookings.length - 1] : null;
-
-    if (!createdBooking) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Ошибка при создании бронирования",
-        },
-        { status: 500 }
-      );
-    }
-
-    // Используем временный ID или создаем новый
-    const bookingId = (createdBooking as { _id?: { toString: () => string } })._id?.toString() || 
-                      (createdBooking as { userId?: { toString: () => string } }).userId?.toString() || 
-                      new mongoose.Types.ObjectId().toString();
+      periodType,
+      totalPrice,
+      status: "pending",
+    });
 
     return NextResponse.json(
       {
         success: true,
         message: "Бронирование успешно создано",
         data: {
-          bookingId,
+          bookingId: booking._id.toString(),
         },
       },
       { status: 201 }

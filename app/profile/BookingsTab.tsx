@@ -18,13 +18,13 @@ interface Booking {
     _id: string;
     name: string;
     email: string;
-  };
+  } | null | undefined;
   startDate: string;
   endDate: string;
   startTime?: string;
   endTime?: string;
   period: 'hour' | 'day' | 'week' | 'month';
-  price: number;
+  price?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   type: 'as-owner' | 'as-renter';
 }
@@ -43,16 +43,36 @@ export default function BookingsTab() {
     try {
       setLoading(true);
       const userId = localStorage.getItem("userId");
-      if (!userId) return;
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
 
-      const response = await fetch(`/api/bookings?userId=${userId}&type=${filter}`);
+      const response = await fetch(`/api/bookings?userId=${userId}&type=${filter}`, {
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result = await response.json();
 
       if (result.success) {
-        setBookings(result.data || []);
+        // Убеждаемся, что renterId всегда имеет правильную структуру и price существует
+        const processedBookings = (result.data || []).map((booking: Booking) => ({
+          ...booking,
+          renterId: booking.renterId || { _id: "", name: "Неизвестно", email: "" },
+          price: booking.price || 0,
+        }));
+        setBookings(processedBookings);
+      } else {
+        console.error("Error loading bookings:", result.message);
+        setBookings([]);
       }
     } catch (error) {
       console.error("Error loading bookings:", error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -101,7 +121,11 @@ export default function BookingsTab() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-color-medium border-t-transparent"></div>
+        <div className="flex justify-center items-center space-x-2">
+          <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-3 h-3 bg-color-medium rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        </div>
         <p className="mt-4 text-color-medium">Загрузка...</p>
       </div>
     );
@@ -197,10 +221,10 @@ export default function BookingsTab() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-bold text-color-medium">
-                        {booking.price.toLocaleString()} ₸
+                        {booking.price ? booking.price.toLocaleString() : "0"} ₸
                       </span>
                       <span className="text-sm text-color-medium">
-                        {booking.type === "as-owner" ? "Арендатор" : "Владелец"}: {booking.renterId.name}
+                        {booking.type === "as-owner" ? "Арендатор" : "Владелец"}: {booking.renterId?.name || "Неизвестно"}
                       </span>
                     </div>
                   </div>

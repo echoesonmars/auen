@@ -230,3 +230,78 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    await connectDB();
+
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const { id } = resolvedParams;
+    const userId = request.nextUrl.searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Необходима авторизация",
+        },
+        { status: 401 }
+      );
+    }
+
+    const mongoose = (await import("mongoose")).default;
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Неверный формат ID",
+        },
+        { status: 400 }
+      );
+    }
+
+    const ad = await Ad.findById(id);
+
+    if (!ad) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Объявление не найдено",
+        },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем, что пользователь является владельцем объявления
+    if (ad.userId.toString() !== userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "У вас нет прав на удаление этого объявления",
+        },
+        { status: 403 }
+      );
+    }
+
+    await Ad.findByIdAndDelete(id);
+
+    return NextResponse.json({
+      success: true,
+      message: "Объявление успешно удалено",
+    });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Delete ad error:", err);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Ошибка при удалении объявления",
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
+
