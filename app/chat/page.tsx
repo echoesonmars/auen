@@ -992,7 +992,11 @@ function ChatPageContent() {
                         }`}
                       >
                         {selectedChat === "auen-ai" ? (
-                          <MarkdownMessage content={message.text} className="text-sm" />
+                          <MarkdownMessage 
+                            content={message.text} 
+                            className="text-sm" 
+                            textColor={message.sender === "me" ? "text-white" : ""}
+                          />
                         ) : (
                           <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
                         )}
@@ -1260,7 +1264,11 @@ function ChatPageContent() {
                       }`}
                     >
                       {selectedChat === "auen-ai" ? (
-                        <MarkdownMessage content={message.text} className="text-sm" />
+                        <MarkdownMessage 
+                          content={message.text} 
+                          className="text-sm" 
+                          textColor={message.sender === "me" ? "text-white" : ""}
+                        />
                       ) : (
                         <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
                       )}

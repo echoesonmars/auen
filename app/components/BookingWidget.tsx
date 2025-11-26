@@ -200,32 +200,58 @@ export default function BookingWidget({
         endDateTime.setHours(endHour, endMin, 0, 0);
       }
 
+      const bookingData = {
+        userId,
+        startDate: startDateTime.toISOString(),
+        endDate: endDateTime.toISOString(),
+        startTime: periodType === "hour" ? startDateTime.toISOString() : null,
+        endTime: periodType === "hour" ? endDateTime.toISOString() : null,
+        periodType,
+        totalPrice: Number(totalPrice), // Убеждаемся, что это число
+        deliveryMethod: deliveryMethod || "pickup",
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Sending booking request:", bookingData);
+      }
+
       const response = await fetch(`/api/ads/${adId}/book`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          userId,
-          startDate: startDateTime.toISOString(),
-          endDate: endDateTime.toISOString(),
-          startTime: periodType === "hour" ? startDateTime.toISOString() : null,
-          endTime: periodType === "hour" ? endDateTime.toISOString() : null,
-          periodType,
-          totalPrice,
-          deliveryMethod,
-        }),
+        body: JSON.stringify(bookingData),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         let errorData;
         try {
-          errorData = JSON.parse(errorText);
+          const errorText = await response.text();
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { message: errorText || "Ошибка при создании бронирования" };
+          }
         } catch {
-          errorData = { message: errorText || "Ошибка при создании бронирования" };
+          errorData = { message: "Ошибка при создании бронирования" };
         }
-        throw new Error(errorData.message || "Ошибка при создании бронирования");
+        
+        // Формируем детальное сообщение об ошибке
+        let errorMessage = errorData.message || "Ошибка при создании бронирования";
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorDetails = errorData.errors.map((e: { path?: string[]; message?: string }) => {
+            if (typeof e === 'object' && e.message) {
+              return e.path ? `${e.path.join('.')}: ${e.message}` : e.message;
+            }
+            return String(e);
+          }).join(", ");
+          if (errorDetails) {
+            errorMessage = `${errorMessage}. ${errorDetails}`;
+          }
+        }
+        
+        console.error("Booking error:", errorData);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -241,7 +267,29 @@ export default function BookingWidget({
           window.location.href = `/bookings/${result.data.bookingId}`;
         }
       } else {
-        const errorMessage = result.message || result.errors?.map((e: { message: string }) => e.message).join(", ") || "Ошибка при создании бронирования";
+        // Формируем детальное сообщение об ошибке
+        let errorMessage = result.message || "Ошибка при создании бронирования";
+        if (result.errors) {
+          if (Array.isArray(result.errors)) {
+            const errorDetails = result.errors.map((e: { path?: string[]; message?: string }) => {
+              if (typeof e === 'object' && e.message) {
+                return e.path ? `${e.path.join('.')}: ${e.message}` : e.message;
+              }
+              return String(e);
+            }).join(", ");
+            if (errorDetails) {
+              errorMessage = `${errorMessage}. ${errorDetails}`;
+            }
+          } else if (typeof result.errors === 'object') {
+            const errorDetails = Object.entries(result.errors).map(([key, value]) => {
+              return `${key}: ${value}`;
+            }).join(", ");
+            if (errorDetails) {
+              errorMessage = `${errorMessage}. ${errorDetails}`;
+            }
+          }
+        }
+        console.error("Booking result error:", result);
         showToast(errorMessage, "error");
       }
     } catch (error) {

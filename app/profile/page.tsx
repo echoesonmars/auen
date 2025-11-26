@@ -599,10 +599,20 @@ export default function ProfilePage() {
                       if (response.status === 401) {
                         showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
                         router.push("/login");
+                        setIsSaving(false);
                         return;
                       }
 
-                      const result = await response.json();
+                      let result;
+                      try {
+                        result = await response.json();
+                      } catch (jsonError) {
+                        const errorText = await response.text();
+                        console.error("JSON parse error:", jsonError, "Response:", errorText);
+                        showToast("Ошибка при обработке ответа сервера: " + errorText.substring(0, 100), "error");
+                        setIsSaving(false);
+                        return;
+                      }
 
                       if (result.success) {
                         setUserInfo(result.data);
@@ -612,12 +622,28 @@ export default function ProfilePage() {
                           showToast("Сессия истекла. Пожалуйста, войдите в систему снова.", "warning");
                           router.push("/login");
                         } else {
-                          showToast("Ошибка: " + (result.message || "Неизвестная ошибка"), "error");
+                          // Показываем детальные ошибки валидации, если они есть
+                          const errorMessages: string[] = [];
+                          if (result.errors) {
+                            Object.values(result.errors).forEach((error: unknown) => {
+                              if (typeof error === 'string') {
+                                errorMessages.push(error);
+                              } else if (Array.isArray(error)) {
+                                errorMessages.push(...error.map(e => String(e)));
+                              }
+                            });
+                          }
+                          const errorMessage = errorMessages.length > 0 
+                            ? errorMessages.join(", ")
+                            : (result.message || "Неизвестная ошибка");
+                          showToast("Ошибка: " + errorMessage, "error");
+                          console.error("Profile update error:", result);
                         }
                       }
                     } catch (error) {
                       console.error("Error updating profile:", error);
-                      showToast("Ошибка при обновлении профиля", "error");
+                      const errorMessage = error instanceof Error ? error.message : "Ошибка при обновлении профиля";
+                      showToast("Ошибка: " + errorMessage, "error");
                     } finally {
                       setIsSaving(false);
                     }

@@ -251,6 +251,20 @@ export async function GET(request: NextRequest) {
       .skip(skip)
       .limit(limit)
       .lean();
+    
+    // Логируем для отладки featured объявлений
+    if (featured === "true" && process.env.NODE_ENV === "development") {
+      console.log("Featured query:", query);
+      console.log("Found featured ads:", ads.length);
+      ads.forEach((ad, index) => {
+        console.log(`Featured ad ${index + 1}:`, {
+          id: ad._id,
+          title: ad.title,
+          featured: ad.featured,
+          images: ad.images?.length || 0,
+        });
+      });
+    }
 
     const total = await Ad.countDocuments(query);
 

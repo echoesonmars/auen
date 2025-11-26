@@ -18,11 +18,46 @@ export async function POST(
     const body = await request.json();
     const { userId, startDate, endDate, startTime, endTime, periodType, totalPrice, deliveryMethod } = body;
 
-    if (!userId || !startDate || !endDate || !periodType || !totalPrice) {
+    // Логируем полученные данные для отладки
+    if (process.env.NODE_ENV === "development") {
+      console.log("Booking request data:", {
+        adId,
+        userId,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        periodType,
+        totalPrice,
+        deliveryMethod,
+        totalPriceType: typeof totalPrice,
+      });
+    }
+
+    if (!userId || !startDate || !endDate || !periodType || totalPrice === undefined || totalPrice === null) {
       return NextResponse.json(
         {
           success: false,
           message: "Необходимы все поля для бронирования",
+          details: {
+            userId: !!userId,
+            startDate: !!startDate,
+            endDate: !!endDate,
+            periodType: !!periodType,
+            totalPrice: totalPrice !== undefined && totalPrice !== null,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Преобразуем totalPrice в число, если это строка
+    const numericTotalPrice = typeof totalPrice === "string" ? parseFloat(totalPrice) : Number(totalPrice);
+    if (isNaN(numericTotalPrice) || numericTotalPrice < 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Некорректная стоимость бронирования",
         },
         { status: 400 }
       );
@@ -68,19 +103,23 @@ export async function POST(
       ownerId: ad.userId.toString(),
       startDate,
       endDate,
-      startTime,
-      endTime,
+      startTime: startTime || null,
+      endTime: endTime || null,
       periodType,
-      totalPrice,
+      totalPrice: numericTotalPrice,
       status: "pending",
     });
 
     if (!validationResult.success) {
+      console.error("Booking validation errors:", validationResult.error.issues);
       return NextResponse.json(
         {
           success: false,
-          message: "Ошибка валидации",
-          errors: validationResult.error.issues,
+          message: "Ошибка валидации данных",
+          errors: validationResult.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
         },
         { status: 400 }
       );
@@ -112,19 +151,41 @@ export async function POST(
     }
 
     // Создаем бронирование в отдельной коллекции
-    const booking = await Booking.create({
+    const bookingData: {
+      adId: mongoose.Types.ObjectId;
+      renterId: mongoose.Types.ObjectId;
+      ownerId: mongoose.Types.ObjectId;
+      startDate: Date;
+      endDate: Date;
+      startTime?: Date;
+      endTime?: Date;
+      periodType: "hour" | "day" | "week" | "month";
+      totalPrice: number;
+      status: "pending" | "confirmed" | "cancelled" | "completed";
+      deliveryMethod: "pickup" | "courier";
+    } = {
       adId: new mongoose.Types.ObjectId(adId),
       renterId: new mongoose.Types.ObjectId(userId),
       ownerId: ad.userId,
       startDate: start,
       endDate: end,
-      startTime: startTime ? new Date(startTime) : undefined,
-      endTime: endTime ? new Date(endTime) : undefined,
       periodType,
-      totalPrice,
+      totalPrice: numericTotalPrice,
       status: "pending",
-      deliveryMethod: deliveryMethod || "pickup",
-    });
+      deliveryMethod: (deliveryMethod === "courier" ? "courier" : "pickup") as "pickup" | "courier",
+    };
+
+    // Добавляем время только если указан период "hour"
+    if (periodType === "hour") {
+      if (startTime) {
+        bookingData.startTime = new Date(startTime);
+      }
+      if (endTime) {
+        bookingData.endTime = new Date(endTime);
+      }
+    }
+
+    const booking = await Booking.create(bookingData);
 
     return NextResponse.json(
       {

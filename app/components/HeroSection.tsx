@@ -78,12 +78,38 @@ export default function HeroSection() {
   useEffect(() => {
     const loadFeaturedAds = async () => {
       try {
-        const response = await fetch("/api/ads?featured=true&limit=4");
-        const result = await response.json();
+        // Сначала пытаемся загрузить featured объявления
+        const featuredResponse = await fetch("/api/ads?featured=true&limit=4");
+        const featuredResult = await featuredResponse.json();
         
-        if (result.success && result.data && result.data.length > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Featured ads response:", featuredResult);
+        }
+        
+        let adsToShow: Array<{
+          _id: string;
+          title: string;
+          location: string;
+          price: string;
+          category: string;
+          images?: string[];
+        }> = [];
+        
+        if (featuredResult.success && featuredResult.data && featuredResult.data.length > 0) {
+          // Если есть featured объявления, используем их
+          adsToShow = featuredResult.data;
+        } else {
+          // Если нет featured объявлений, загружаем последние активные
+          const latestResponse = await fetch("/api/ads?limit=4");
+          const latestResult = await latestResponse.json();
           
-          const cards = result.data.map((ad: {
+          if (latestResult.success && latestResult.data && latestResult.data.length > 0) {
+            adsToShow = latestResult.data;
+          }
+        }
+        
+        if (adsToShow.length > 0) {
+          const cards = adsToShow.map((ad: {
             _id: string;
             title: string;
             location: string;
@@ -93,28 +119,48 @@ export default function HeroSection() {
           }) => {
             // Определяем изображение: если есть реальные изображения, используем первое, иначе эмодзи
             const firstImage = ad.images && ad.images.length > 0 ? ad.images[0] : null;
-            const imageUrl = firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/'))
-              ? firstImage
-              : null;
+            
+            // Проверяем, является ли изображение валидным URL или путем
+            let imageUrl: string | null = null;
+            if (firstImage) {
+              // Если это Cloudinary URL или абсолютный URL
+              if (firstImage.startsWith('http://') || firstImage.startsWith('https://')) {
+                imageUrl = firstImage;
+              }
+              // Если это относительный путь
+              else if (firstImage.startsWith('/')) {
+                imageUrl = firstImage;
+              }
+              // Если это путь без слеша в начале, добавляем его
+              else if (firstImage.startsWith('uploads/') || firstImage.startsWith('auen/')) {
+                imageUrl = `/${firstImage}`;
+              }
+            }
             
             return {
-              id: ad._id,
+              id: String(ad._id),
               title: ad.title,
               location: ad.location,
               price: ad.price,
               category: ad.category,
               image: imageUrl || (categoryIcons[ad.category] || "🎵"),
-              adId: ad._id,
+              adId: String(ad._id),
             };
           });
           
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Featured cards:", cards);
+          }
+          
           setFeaturedCards(cards);
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log("No ads found, keeping default cards");
+          }
         }
       } catch (error) {
         // Используем дефолтные карточки при ошибке
-        if (process.env.NODE_ENV === 'development') {
-          console.error("Error loading featured ads:", error);
-        }
+        console.error("Error loading featured ads:", error);
       }
     };
     

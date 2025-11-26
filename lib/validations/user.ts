@@ -44,16 +44,20 @@ export const loginSchema = z.object({
 // Схема валидации для обновления профиля
 export const updateProfileSchema = z.object({
   name: z
-    .string()
-    .min(2, "Имя должно содержать минимум 2 символа")
-    .max(50, "Имя не должно превышать 50 символов")
-    .regex(/^[а-яА-ЯёЁa-zA-Z\s]+$/, "Имя может содержать только буквы")
+    .union([z.string(), z.undefined()])
+    .refine((val) => val === undefined || (val.length >= 2 && val.length <= 50), {
+      message: "Имя должно содержать от 2 до 50 символов",
+    })
+    .refine((val) => val === undefined || /^[а-яА-ЯёЁa-zA-Z\s]+$/.test(val), {
+      message: "Имя может содержать только буквы",
+    })
     .optional(),
   email: z
-    .string()
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Некорректный email адрес")
-    .toLowerCase()
-    .trim()
+    .union([z.string(), z.undefined()])
+    .refine((val) => val === undefined || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: "Некорректный email адрес",
+    })
+    .transform((val) => val === undefined ? undefined : val.toLowerCase().trim())
     .optional(),
   phone: z
     .union([z.string(), z.null()])

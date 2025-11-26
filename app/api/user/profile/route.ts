@@ -37,13 +37,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Валидация
-    const validation = validate(updateProfileSchema, body);
+    // Валидация (исключаем userId из валидации, так как он не в схеме)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { userId: _userId, ...bodyForValidation } = body;
+    
+    // Убираем undefined значения, чтобы они не валидировались
+    const cleanedBody: Record<string, unknown> = {};
+    Object.keys(bodyForValidation).forEach((key) => {
+      if (bodyForValidation[key as keyof typeof bodyForValidation] !== undefined) {
+        cleanedBody[key] = bodyForValidation[key as keyof typeof bodyForValidation];
+      }
+    });
+    
+    const validation = validate(updateProfileSchema, cleanedBody);
 
     if (!validation.success) {
+      console.error("Validation errors:", validation.errors);
       return NextResponse.json(
         {
           success: false,
+          message: "Ошибка валидации данных",
           errors: formatValidationErrors(validation.errors),
         },
         { status: 400 }
