@@ -8,7 +8,6 @@
  * npx tsx scripts/migrate-images-to-cloudinary.ts
  */
 
-import mongoose from "mongoose";
 import connectDB from "../lib/mongodb";
 import Ad from "../models/Ad";
 import User from "../models/User";
