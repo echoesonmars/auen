@@ -193,16 +193,20 @@ export default function AdsPage() {
                           src={getImageUrl(ad.images[0])}
                           alt={ad.title}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                           onError={(e) => {
                             // Если изображение не загрузилось, показываем эмодзи
                             const target = e.target as HTMLImageElement;
                             target.style.display = "none";
                             const parent = target.parentElement;
                             if (parent) {
-                              const icon = document.createElement("div");
-                              icon.className = "text-4xl sm:text-5xl";
-                              icon.textContent = getCategoryIcon(ad.category);
-                              parent.appendChild(icon);
+                              // Проверяем, нет ли уже placeholder
+                              if (!parent.querySelector('.image-placeholder')) {
+                                const icon = document.createElement("div");
+                                icon.className = "image-placeholder text-4xl sm:text-5xl";
+                                icon.textContent = getCategoryIcon(ad.category);
+                                parent.appendChild(icon);
+                              }
                             }
                           }}
                         />
