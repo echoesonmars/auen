@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
+import { getImageUrl } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -11,6 +12,20 @@ interface Message {
   sender: "me" | "other";
   time: string;
   read: boolean;
+  ads?: Array<{
+    id: string;
+    title: string;
+    category: string;
+    description: string;
+    price: string;
+    location: string;
+    images: string[];
+    bookings: Array<{
+      startDate: string | Date;
+      endDate: string | Date;
+      status: string;
+    }>;
+  }>;
 }
 
 interface Chat {
@@ -56,6 +71,8 @@ function ChatPageContent() {
   const [adInfo, setAdInfo] = useState<{ id: string; title: string } | null>(null);
   const [receiverId, setReceiverId] = useState<string | null>(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
 
   // Сохраняем выбранный чат в sessionStorage при изменении
   useEffect(() => {
@@ -142,16 +159,16 @@ function ChatPageContent() {
 
       // Если передан userId, создаем/находим чат
       if (userIdParam) {
-        try {
+          try {
           console.log("Creating chat with userId:", currentUserId, "receiverId:", userIdParam);
-          const chatResponse = await fetch("/api/chats", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: currentUserId,
-              receiverId: userIdParam,
-            }),
-          });
+            const chatResponse = await fetch("/api/chats", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: currentUserId,
+                receiverId: userIdParam,
+              }),
+            });
 
           console.log("Chat response status:", chatResponse.status);
           console.log("Chat response headers:", Object.fromEntries(chatResponse.headers.entries()));
@@ -207,17 +224,19 @@ function ChatPageContent() {
           }
           console.log("Chat result:", JSON.stringify(chatResult, null, 2));
 
-          if (chatResult.success) {
+            if (chatResult.success) {
             console.log("✓ Chat created/found successfully:", chatResult.data.chatId);
-            // Перезагружаем чаты после создания
-            await loadChats();
-            setSelectedChat(chatResult.data.chatId);
-            // Если есть adId, добавляем сообщение о товаре
-            if (adId && adInfo) {
-              setTimeout(() => {
-                setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
-              }, 500);
-            }
+            // Устанавливаем выбранный чат
+              setSelectedChat(chatResult.data.chatId);
+            sessionStorage.setItem("selectedChat", chatResult.data.chatId);
+            // Перезагружаем чаты после создания (без изменения selectedChat)
+            await loadChats(true);
+              // Если есть adId, добавляем сообщение о товаре
+              if (adId && adInfo) {
+                setTimeout(() => {
+                  setMessageInput(`Здравствуйте! Меня заинтересовал товар: ${adInfo.title}`);
+                }, 500);
+              }
           } else {
             // Показываем ошибку пользователю
             console.error("========== CHAT CREATION FAILED ==========");
@@ -227,9 +246,9 @@ function ChatPageContent() {
             console.error("Error type:", chatResult.errorType);
             console.error("==========================================");
             showToast(chatResult.message || "Ошибка при создании чата", "error");
-          }
-        } catch (error) {
-          console.error("Error creating chat:", error);
+            }
+          } catch (error) {
+            console.error("Error creating chat:", error);
           showToast("Ошибка при создании чата", "error");
         }
       } else if (chatId) {
@@ -261,14 +280,18 @@ function ChatPageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (selectedChat) {
+    if (selectedChat && !loadingMessages) {
       loadMessages(selectedChat);
       // После загрузки сообщений счетчик обновится в loadMessages
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
 
-  const loadChats = async () => {
+  const loadChats = async (preserveSelection = true) => {
+    // Предотвращаем множественные одновременные загрузки
+    if (isLoadingChats) return;
+    
+    setIsLoadingChats(true);
     try {
       // Чат с Auen AI всегда должен быть доступен
       const auenAIChat: Chat = {
@@ -286,12 +309,15 @@ function ChatPageContent() {
       // Загружаем обычные чаты, если есть userId
       if (userId) {
         try {
-          const response = await fetch(`/api/chats?userId=${userId}`);
+          const response = await fetch(`/api/chats?userId=${userId}`, {
+            cache: 'no-store'
+          });
           
           // Обработка ошибки авторизации
           if (response.status === 401) {
             // Показываем только чат с AI при ошибке авторизации
             setChats([auenAIChat]);
+            setIsLoadingChats(false);
             return;
           }
           
@@ -302,22 +328,26 @@ function ChatPageContent() {
             const allChats = [auenAIChat, ...result.data];
             
             // Сохраняем текущий выбранный чат перед обновлением списка
-            const currentSelectedChat = selectedChat || sessionStorage.getItem("selectedChat");
+            const currentSelectedChat = preserveSelection 
+              ? (selectedChat || sessionStorage.getItem("selectedChat"))
+              : null;
             
             setChats(allChats);
             
-            // Восстанавливаем выбранный чат после обновления списка
-            // Это предотвращает переключение на AI чат при обновлении страницы
-            if (currentSelectedChat && currentSelectedChat !== "auen-ai") {
+            // Восстанавливаем выбранный чат только если preserveSelection = true
+            // и чат существует в новом списке
+            if (preserveSelection && currentSelectedChat && currentSelectedChat !== "auen-ai") {
               // Проверяем, что выбранный чат существует в новом списке
               const chatExists = allChats.some(chat => chat.id === currentSelectedChat);
               if (chatExists) {
-                // Чат существует, восстанавливаем его выбор
-                setSelectedChat(currentSelectedChat);
+                // Чат существует, НЕ меняем selectedChat здесь, чтобы избежать бесконечного цикла
+                // Просто обновляем sessionStorage
                 sessionStorage.setItem("selectedChat", currentSelectedChat);
               } else {
                 // Чат не найден, очищаем выбор (пользователь выберет сам)
-                setSelectedChat(null);
+                if (selectedChat === currentSelectedChat) {
+                  setSelectedChat(null);
+                }
                 sessionStorage.removeItem("selectedChat");
               }
             }
@@ -326,11 +356,7 @@ function ChatPageContent() {
             window.dispatchEvent(new Event("chatsUpdated"));
           } else {
             // Если API вернул ошибку, показываем только чат с AI
-            if (result.message?.includes("авторизац")) {
               setChats([auenAIChat]);
-            } else {
-              setChats([auenAIChat]);
-            }
           }
         } catch (error) {
           console.error("Error loading chats:", error);
@@ -359,13 +385,17 @@ function ChatPageContent() {
       setChats([auenAIChat]);
       // НЕ устанавливаем автоматически чат с AI
     } finally {
-      setLoading(false);
+      setIsLoadingChats(false);
     }
   };
 
   // Функция markMessagesAsRead удалена, так как сообщения помечаются автоматически в GET /api/chats/[chatId]/messages
 
   const loadMessages = async (chatId: string) => {
+    // Предотвращаем множественные одновременные загрузки
+    if (loadingMessages) return;
+    
+    setLoadingMessages(true);
     try {
       // Если это чат с AI, загружаем сообщения из localStorage или показываем приветствие
       if (chatId === "auen-ai") {
@@ -387,6 +417,7 @@ function ChatPageContent() {
             },
           ]);
         }
+        setLoadingMessages(false);
         return;
       }
 
@@ -395,7 +426,9 @@ function ChatPageContent() {
       // Получаем информацию о собеседнике для обычных чатов
       if (chatId !== "auen-ai") {
         try {
-          const receiverResponse = await fetch(`/api/chats/${chatId}/receiver?userId=${userId}`);
+          const receiverResponse = await fetch(`/api/chats/${chatId}/receiver?userId=${userId}`, {
+            cache: 'no-store'
+          });
           if (receiverResponse.ok) {
             const receiverResult = await receiverResponse.json();
             if (receiverResult.success && receiverResult.data.receiverId) {
@@ -407,7 +440,9 @@ function ChatPageContent() {
         }
       }
       
-      const response = await fetch(`/api/chats/${chatId}/messages?userId=${userId}`);
+      const response = await fetch(`/api/chats/${chatId}/messages?userId=${userId}`, {
+        cache: 'no-store'
+      });
       
       // Обработка ошибки авторизации
       if (response.status === 401) {
@@ -418,6 +453,7 @@ function ChatPageContent() {
           setSelectedChat(null);
           sessionStorage.removeItem("selectedChat");
         }
+        setLoadingMessages(false);
         return;
       }
       
@@ -425,26 +461,21 @@ function ChatPageContent() {
 
       if (result.success) {
         setMessages(result.data);
-        // Сообщения уже помечены как прочитанные в GET /api/chats/[chatId]/messages
-        // СРАЗУ обновляем список чатов для получения актуальных счетчиков из БД
-        // Это важно - сначала обновляем из БД, потом сбрасываем локально
-        await loadChats();
-        // После обновления из БД сбрасываем счетчик для текущего чата в локальном состоянии
-        // Это гарантирует, что счетчик будет 0 даже если в БД еще не обновилось
+        
+        // Сбрасываем счетчик для текущего чата в локальном состоянии
         setChats(prevChats => 
           prevChats.map(chat => 
             chat.id === chatId ? { ...chat, unread: 0 } : chat
           )
         );
-        // МНОЖЕСТВЕННЫЕ события для обновления навбара
+        
+        // Обновляем непрочитанные в навбаре
         window.dispatchEvent(new Event("chatsUpdated"));
-        setTimeout(() => {
-          window.dispatchEvent(new Event("chatsUpdated"));
-        }, 100);
-        // Дополнительные обновления для синхронизации с БД
+        
+        // Обновляем список чатов из БД (без изменения selectedChat)
         setTimeout(async () => {
-          await loadChats();
-          // После обновления из БД снова сбрасываем счетчик для текущего чата
+          await loadChats(true);
+          // Снова сбрасываем счетчик после обновления из БД
           setChats(prevChats => 
             prevChats.map(chat => 
               chat.id === chatId ? { ...chat, unread: 0 } : chat
@@ -452,16 +483,6 @@ function ChatPageContent() {
           );
           window.dispatchEvent(new Event("chatsUpdated"));
         }, 300);
-        setTimeout(async () => {
-          await loadChats();
-          // После обновления из БД снова сбрасываем счетчик для текущего чата
-          setChats(prevChats => 
-            prevChats.map(chat => 
-              chat.id === chatId ? { ...chat, unread: 0 } : chat
-            )
-          );
-          window.dispatchEvent(new Event("chatsUpdated"));
-        }, 700);
       } else if (result.message?.includes("авторизац")) {
         // Если ошибка авторизации и это не AI чат, НЕ переключаемся автоматически
         if (chatId !== "auen-ai") {
@@ -471,6 +492,8 @@ function ChatPageContent() {
       }
     } catch (error) {
       console.error("Error loading messages:", error);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -518,17 +541,36 @@ function ChatPageContent() {
           });
         });
 
-        // Симулируем ответ от AI (здесь можно добавить реальный AI API)
-        setTimeout(() => {
+        // Отправляем запрос к AI API
+        try {
+          const aiResponse = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: messageText,
+              userId: userId,
+            }),
+          });
+
+          if (!aiResponse.ok) {
+            throw new Error("Ошибка при обращении к AI");
+          }
+
+          const aiResult = await aiResponse.json();
+
+          if (aiResult.success) {
           const aiMessage: Message = {
             id: `msg-${Date.now()}-ai`,
-            text: "Спасибо за ваше сообщение! В данный момент я в разработке, но скоро смогу помочь вам с поиском инструментов и ответами на вопросы. 😊",
+              text: aiResult.data.message,
             sender: "other",
             time: new Date().toLocaleTimeString("ru-RU", {
               hour: "2-digit",
               minute: "2-digit",
             }),
             read: true,
+              ads: aiResult.data.ads || [],
           };
           
           const updatedMessages = [...newMessages, aiMessage];
@@ -541,14 +583,35 @@ function ChatPageContent() {
               if (chat.id === "auen-ai") {
                 return {
                   ...chat,
-                  lastMessage: aiMessage.text,
+                    lastMessage: aiMessage.text.length > 50 ? aiMessage.text.substring(0, 50) + "..." : aiMessage.text,
                   time: "только что",
                 };
               }
               return chat;
             });
           });
-        }, 1000);
+          } else {
+            throw new Error(aiResult.message || "Ошибка при обработке ответа AI");
+          }
+        } catch (error) {
+          console.error("Error calling AI API:", error);
+          const errorMessage: Message = {
+            id: `msg-${Date.now()}-ai-error`,
+            text: "Извините, произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте еще раз.",
+            sender: "other",
+            time: new Date().toLocaleTimeString("ru-RU", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            read: true,
+          };
+          
+          const updatedMessages = [...newMessages, errorMessage];
+          setMessages(updatedMessages);
+          localStorage.setItem(`auen-ai-messages-${userId}`, JSON.stringify(updatedMessages));
+          
+          showToast("Ошибка при обращении к AI", "error");
+        }
 
         setSending(false);
         return;
@@ -643,9 +706,9 @@ function ChatPageContent() {
         console.log("✓ Message sent successfully");
         setMessages([...messages, result.data]);
         setMessageInput("");
-        // Обновляем список чатов после отправки сообщения
+        // Обновляем список чатов после отправки сообщения (без изменения selectedChat)
         setTimeout(async () => {
-          await loadChats();
+          await loadChats(true);
           window.dispatchEvent(new Event("chatsUpdated"));
         }, 100);
       } else {
@@ -680,6 +743,12 @@ function ChatPageContent() {
                     <button
                       key={chat.id}
                       onClick={() => {
+                        // Предотвращаем переключение, если уже загружаются сообщения
+                        if (loadingMessages) return;
+                        
+                        // Если кликаем на уже выбранный чат, ничего не делаем
+                        if (selectedChat === chat.id) return;
+                        
                         // СРАЗУ сбрасываем счетчик непрочитанных при клике на чат
                         if (chat.id !== "auen-ai") {
                           setChats(prevChats => 
@@ -687,11 +756,11 @@ function ChatPageContent() {
                               c.id === chat.id ? { ...c, unread: 0 } : c
                             )
                           );
-                          // МНОЖЕСТВЕННЫЕ события для обновления навбара
+                          // Обновляем непрочитанные в навбаре
                           window.dispatchEvent(new Event("chatsUpdated"));
-                          setTimeout(() => window.dispatchEvent(new Event("chatsUpdated")), 50);
-                          setTimeout(() => window.dispatchEvent(new Event("chatsUpdated")), 100);
                         }
+                        
+                        // Устанавливаем выбранный чат
                         setSelectedChat(chat.id);
                         sessionStorage.setItem("selectedChat", chat.id);
                       }}
@@ -820,21 +889,21 @@ function ChatPageContent() {
                           className="p-2 rounded-lg hover:bg-color-lightest transition-colors"
                           title="Меню чата"
                         >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-color-medium"
-                          >
-                            <circle cx="12" cy="12" r="1"></circle>
-                            <circle cx="19" cy="12" r="1"></circle>
-                            <circle cx="5" cy="12" r="1"></circle>
-                          </svg>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-color-medium"
+                    >
+                      <circle cx="12" cy="12" r="1"></circle>
+                      <circle cx="19" cy="12" r="1"></circle>
+                      <circle cx="5" cy="12" r="1"></circle>
+                    </svg>
                         </button>
                         {showChatMenu && (
                           <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-color-light z-50">
@@ -898,7 +967,7 @@ function ChatPageContent() {
                               className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
                             >
                               Удалить чат
-                            </button>
+                  </button>
                           </div>
                         )}
                       </div>
@@ -921,7 +990,69 @@ function ChatPageContent() {
                             : "bg-white text-color-dark border border-color-light"
                         }`}
                       >
-                        <p className="text-sm mb-1">{message.text}</p>
+                        <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                        
+                        {/* Отображение объявлений, если они есть */}
+                        {message.ads && message.ads.length > 0 && (
+                          <div className="mt-3 space-y-3">
+                            {message.ads.map((ad) => {
+                              const bookedPeriods = (ad.bookings || [])
+                                .filter((b: { status: string }) => b.status === "confirmed" || b.status === "pending")
+                                .map((b: { startDate: string | Date; endDate: string | Date }) => {
+                                  const start = new Date(b.startDate).toLocaleDateString("ru-RU");
+                                  const end = new Date(b.endDate).toLocaleDateString("ru-RU");
+                                  return `${start} - ${end}`;
+                                });
+
+                              return (
+                                <Link
+                                  key={ad.id}
+                                  href={`/ads/${ad.id}`}
+                                  className="block border border-color-light rounded-lg p-3 bg-white hover:bg-color-lightest transition-colors"
+                                >
+                                  <div className="flex gap-3">
+                                    {ad.images && ad.images.length > 0 && (
+                                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-color-lightest">
+                                        <img
+                                          src={getImageUrl(ad.images[0])}
+                                          alt={ad.title}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = "none";
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="font-semibold text-color-dark text-sm mb-1 line-clamp-1">
+                                        {ad.title}
+                                      </h4>
+                                      <p className="text-xs text-color-medium mb-1">{ad.category}</p>
+                                      <p className="text-sm font-bold text-color-medium mb-1">{ad.price}</p>
+                                      <p className="text-xs text-color-medium mb-1">📍 {ad.location}</p>
+                                      {bookedPeriods.length > 0 && (
+                                        <p className="text-xs text-red-600 mt-1">
+                                          ⚠️ Занято: {bookedPeriods.join(", ")}
+                                        </p>
+                                      )}
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          router.push(`/ads/${ad.id}`);
+                                        }}
+                                        className="mt-2 text-xs bg-color-medium text-white px-3 py-1 rounded hover:bg-color-dark transition-colors"
+                                      >
+                                        Посмотреть и забронировать
+                                      </button>
+                                    </div>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
                         <div className="flex items-center justify-end gap-1">
                           <span
                             className={`text-xs ${
@@ -933,15 +1064,15 @@ function ChatPageContent() {
                           {message.sender === "me" && (
                             <div className="flex items-center gap-0">
                               {/* Первая галочка - отправлено (всегда видна) */}
-                              <svg
+                            <svg
                                 width="14"
                                 height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                                 className={message.read ? "text-blue-400" : "text-white/50"}
                               >
                                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -960,7 +1091,7 @@ function ChatPageContent() {
                                   className="text-blue-400 -ml-2"
                                 >
                                   <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
+                            </svg>
                               )}
                             </div>
                           )}
@@ -1123,7 +1254,69 @@ function ChatPageContent() {
                           : "bg-white text-color-dark border border-color-light"
                       }`}
                     >
-                      <p className="text-sm mb-1">{message.text}</p>
+                      <p className="text-sm mb-1 whitespace-pre-wrap">{message.text}</p>
+                      
+                      {/* Отображение объявлений, если они есть */}
+                      {message.ads && message.ads.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {message.ads.map((ad) => {
+                            const bookedPeriods = (ad.bookings || [])
+                              .filter((b: { status: string }) => b.status === "confirmed" || b.status === "pending")
+                              .map((b: { startDate: string | Date; endDate: string | Date }) => {
+                                const start = new Date(b.startDate).toLocaleDateString("ru-RU");
+                                const end = new Date(b.endDate).toLocaleDateString("ru-RU");
+                                return `${start} - ${end}`;
+                              });
+
+                            return (
+                              <Link
+                                key={ad.id}
+                                href={`/ads/${ad.id}`}
+                                className="block border border-color-light rounded-lg p-3 bg-white hover:bg-color-lightest transition-colors"
+                              >
+                                <div className="flex gap-3">
+                                  {ad.images && ad.images.length > 0 && (
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-color-lightest">
+                                      <img
+                                        src={ad.images[0].startsWith("/") ? ad.images[0] : `/${ad.images[0]}`}
+                                        alt={ad.title}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = "none";
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-color-dark text-sm mb-1 line-clamp-1">
+                                      {ad.title}
+                                    </h4>
+                                    <p className="text-xs text-color-medium mb-1">{ad.category}</p>
+                                    <p className="text-sm font-bold text-color-medium mb-1">{ad.price}</p>
+                                    <p className="text-xs text-color-medium mb-1">📍 {ad.location}</p>
+                                    {bookedPeriods.length > 0 && (
+                                      <p className="text-xs text-red-600 mt-1">
+                                        ⚠️ Занято: {bookedPeriods.join(", ")}
+                                      </p>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        router.push(`/ads/${ad.id}`);
+                                      }}
+                                      className="mt-2 text-xs bg-color-medium text-white px-3 py-1 rounded hover:bg-color-dark transition-colors"
+                                    >
+                                      Посмотреть и забронировать
+                                    </button>
+                                  </div>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
                       <span
                         className={`text-xs ${
                           message.sender === "me" ? "text-white/70" : "text-color-medium"

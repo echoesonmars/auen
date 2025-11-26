@@ -1,0 +1,304 @@
+КОЛЛЕКЦИЯ: users
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["name", "email"],
+    "properties": {
+      "name": {
+        "bsonType": "string",
+        "minLength": 2,
+        "maxLength": 50,
+        "pattern": "^[а-яА-ЯёЁa-zA-Z\\s]+$"
+      },
+      "email": {
+        "bsonType": "string",
+        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+      },
+      "phone": {
+        "bsonType": ["string", "null"],
+        "pattern": "^\\+?[1-9]\\d{1,14}$"
+      },
+      "password": {
+        "bsonType": ["string", "null"],
+        "minLength": 8
+      },
+      "googleId": {
+        "bsonType": ["string", "null"]
+      },
+      "avatar": {
+        "bsonType": ["string", "null"]
+      },
+      "role": {
+        "bsonType": "string",
+        "enum": ["user", "admin", "moderator"]
+      },
+      "isBlocked": {
+        "bsonType": "bool"
+      },
+      "bio": {
+        "bsonType": ["string", "null"],
+        "maxLength": 500
+      },
+      "website": {
+        "bsonType": ["string", "null"],
+        "pattern": "^https?://.+"
+      },
+      "instagram": {
+        "bsonType": ["string", "null"],
+        "pattern": "^[a-zA-Z0-9._]+$"
+      },
+      "telegram": {
+        "bsonType": ["string", "null"],
+        "pattern": "^[a-zA-Z0-9_]+$"
+      },
+      "vk": {
+        "bsonType": ["string", "null"],
+        "pattern": "^[a-zA-Z0-9._]+$"
+      },
+      "youtube": {
+        "bsonType": ["string", "null"],
+        "pattern": "^[a-zA-Z0-9._-]+$"
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
+КОЛЛЕКЦИЯ: ads
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["title", "category", "description", "price", "location", "userId"],
+    "properties": {
+      "title": {
+        "bsonType": "string",
+        "minLength": 10,
+        "maxLength": 100
+      },
+      "category": {
+        "bsonType": "string",
+        "enum": ["Инструменты", "Студии", "DJ оборудование", "Клавишные", "Микрофоны", "Аудио"]
+      },
+      "description": {
+        "bsonType": "string",
+        "minLength": 50,
+        "maxLength": 2000
+      },
+      "price": {
+        "bsonType": "string",
+        "pattern": "^\\d+(\\s*₸)?\\s*\\/\\s*(час|день|неделя|месяц)$"
+      },
+      "location": {
+        "bsonType": "string",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "images": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "string"
+        },
+        "maxItems": 10
+      },
+      "userId": {
+        "bsonType": "objectId"
+      },
+      "views": {
+        "bsonType": "int",
+        "minimum": 0
+      },
+      "status": {
+        "bsonType": "string",
+        "enum": ["active", "inactive", "sold", "pending", "rejected"]
+      },
+      "featured": {
+        "bsonType": "bool"
+      },
+      "bookings": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "object",
+          "required": ["renterId", "startDate", "endDate", "period", "price"],
+          "properties": {
+            "renterId": {
+              "bsonType": "objectId"
+            },
+            "startDate": {
+              "bsonType": "date"
+            },
+            "endDate": {
+              "bsonType": "date"
+            },
+            "startTime": {
+              "bsonType": ["date", "null"]
+            },
+            "endTime": {
+              "bsonType": ["date", "null"]
+            },
+            "period": {
+              "bsonType": "string",
+              "enum": ["hour", "day", "week", "month"]
+            },
+            "price": {
+              "bsonType": "double",
+              "minimum": 0
+            },
+            "status": {
+              "bsonType": "string",
+              "enum": ["pending", "approved", "rejected", "cancelled"]
+            },
+            "createdAt": {
+              "bsonType": ["date", "null"]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
+КОЛЛЕКЦИЯ: chats
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["participants"],
+    "properties": {
+      "participants": {
+        "bsonType": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "bsonType": "objectId"
+        }
+      },
+      "lastMessage": {
+        "bsonType": ["objectId", "null"]
+      },
+      "lastMessageAt": {
+        "bsonType": ["date", "null"]
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
+КОЛЛЕКЦИЯ: messages
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["chatId", "senderId", "receiverId", "text"],
+    "properties": {
+      "chatId": {
+        "bsonType": "objectId"
+      },
+      "senderId": {
+        "bsonType": "objectId"
+      },
+      "receiverId": {
+        "bsonType": "objectId"
+      },
+      "text": {
+        "bsonType": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "read": {
+        "bsonType": ["bool", "null"]
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
+КОЛЛЕКЦИЯ: reviews
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["userId", "adId", "rating", "comment"],
+    "properties": {
+      "userId": {
+        "bsonType": "objectId"
+      },
+      "adId": {
+        "bsonType": "objectId"
+      },
+      "rating": {
+        "bsonType": "int",
+        "minimum": 1,
+        "maximum": 5
+      },
+      "comment": {
+        "bsonType": "string",
+        "minLength": 10,
+        "maxLength": 500
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
+КОЛЛЕКЦИЯ: userreviews
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["reviewerId", "reviewedUserId", "rating", "comment"],
+    "properties": {
+      "reviewerId": {
+        "bsonType": "objectId"
+      },
+      "reviewedUserId": {
+        "bsonType": "objectId"
+      },
+      "rating": {
+        "bsonType": "int",
+        "minimum": 1,
+        "maximum": 5
+      },
+      "comment": {
+        "bsonType": "string",
+        "minLength": 10,
+        "maxLength": 500
+      },
+      "createdAt": {
+        "bsonType": ["date", "null"]
+      },
+      "updatedAt": {
+        "bsonType": ["date", "null"]
+      }
+    },
+    "additionalProperties": true
+  }
+}
+
