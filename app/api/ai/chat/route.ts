@@ -13,11 +13,9 @@ interface AdSearchResult {
   price: string;
   location: string;
   images: string[];
-  bookings?: Array<{
-    startDate: Date;
-    endDate: Date;
-    status: string;
-  }>;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -48,69 +46,123 @@ export async function POST(request: NextRequest) {
     }
 
     // Анализируем запрос пользователя для поиска объявлений
-    const searchKeywords = extractSearchKeywords(message);
+    const searchParams = extractSearchParams(message);
     
     // Ищем объявления в базе данных
     let foundAds: AdSearchResult[] = [];
-    if (searchKeywords.length > 0) {
+    
+    // Определяем, нужно ли искать объявления (если есть ключевые слова поиска)
+    const shouldSearch = searchParams.keywords.length > 0 || 
+                        searchParams.location || 
+                        searchParams.category ||
+                        message.toLowerCase().includes("найди") ||
+                        message.toLowerCase().includes("ищу") ||
+                        message.toLowerCase().includes("покажи") ||
+                        message.toLowerCase().includes("есть") ||
+                        message.toLowerCase().includes("нужен");
+    
+    if (shouldSearch) {
       const searchQuery: Record<string, unknown> = {
         status: "active",
       };
 
       // Поиск по категории, названию и описанию
-      if (searchKeywords.length > 0) {
+      if (searchParams.keywords.length > 0) {
         searchQuery.$or = [
-          { category: { $regex: searchKeywords.join("|"), $options: "i" } },
-          { title: { $regex: searchKeywords.join("|"), $options: "i" } },
-          { description: { $regex: searchKeywords.join("|"), $options: "i" } },
+          { category: { $regex: searchParams.keywords.join("|"), $options: "i" } },
+          { title: { $regex: searchParams.keywords.join("|"), $options: "i" } },
+          { description: { $regex: searchParams.keywords.join("|"), $options: "i" } },
         ];
       }
 
+      // Поиск по локации
+      if (searchParams.location) {
+        searchQuery.location = { $regex: searchParams.location, $options: "i" };
+      }
+
+      // Поиск по категории (если указана явно)
+      if (searchParams.category) {
+        searchQuery.category = { $regex: searchParams.category, $options: "i" };
+      }
+
+      // Поиск по цене (если указан диапазон) - упрощенная версия
+      // Цена хранится как строка "5000 ₸/день", поэтому поиск по цене сложен
+      // Пока оставляем без фильтра по цене, можно добавить позже
+
       const adsResult = await Ad.find(searchQuery)
-        .limit(5)
-        .select("title category description price location images bookings")
+        .limit(10) // Увеличиваем лимит для лучшего выбора
+        .select("title category description price location images latitude longitude address")
+        .sort({ createdAt: -1 }) // Сначала новые
         .lean();
+      
+      // Получаем бронирования для найденных объявлений (если нужно)
+      // Бронирования хранятся в отдельной коллекции Booking
       foundAds = adsResult as unknown as AdSearchResult[];
     }
 
     // Формируем контекст для GPT
-    const systemPrompt = `Ты - Auen AI, помощник на платформе аренды музыкального оборудования в Казахстане. 
+    const systemPrompt = `Ты - Auen AI, умный помощник на платформе аренды музыкального оборудования в Казахстане. 
 Твоя задача - помогать пользователям находить нужное оборудование, отвечать на вопросы и предлагать решения.
 
-Если пользователь ищет оборудование, найди подходящие варианты из базы данных и представь их в удобном формате.
-Укажи название, категорию, цену, локацию и доступность.
-Если есть информация о бронированиях, укажи свободные периоды.
+ВАЖНО: У тебя есть доступ к базе данных объявлений. Когда пользователь ищет оборудование, ты должен:
+1. Найти подходящие варианты из предоставленных данных
+2. Представить их в удобном и структурированном формате
+3. Указать для каждого объявления:
+   - Название и категорию
+   - Цену
+   - Локацию (город)
+   - ID объявления (для перехода по ссылке)
+   - Если есть изображения, упомяни это
+4. Если найдено несколько вариантов, предложи лучшие
+5. Если ничего не найдено, предложи альтернативы или уточни запрос
 
-Будь дружелюбным, профессиональным и полезным. Отвечай на русском языке.`;
+Формат ответа для найденных объявлений:
+"Нашел для вас несколько вариантов:
+
+1. [Название] ([Категория])
+   💰 Цена: [цена]
+   📍 Локация: [город]
+   🔗 ID: [id] (можно перейти по ссылке /ads/[id])
+
+2. ..."
+
+Будь дружелюбным, профессиональным и полезным. Отвечай на русском языке. Если пользователь задает общие вопросы (не про поиск), отвечай как обычный помощник.`;
 
     const userMessage = message;
     
     // Формируем сообщение с информацией о найденных объявлениях
     let adsContext = "";
     if (foundAds.length > 0) {
-      adsContext = "\n\nНайденные объявления:\n";
+      adsContext = "\n\n=== НАЙДЕННЫЕ ОБЪЯВЛЕНИЯ ИЗ БАЗЫ ДАННЫХ ===\n";
+      adsContext += `Найдено ${foundAds.length} объявлений. Используй эту информацию для ответа пользователю.\n\n`;
+      
       foundAds.forEach((ad, index) => {
-        const bookings = ad.bookings || [];
-        const bookedPeriods = bookings
-          .filter((b: { status: string }) => b.status === "confirmed" || b.status === "pending")
-          .map((b: { startDate: Date; endDate: Date }) => {
-            const start = new Date(b.startDate).toLocaleDateString("ru-RU");
-            const end = new Date(b.endDate).toLocaleDateString("ru-RU");
-            return `${start} - ${end}`;
-          })
-          .join(", ");
-
-        adsContext += `${index + 1}. ${ad.title} (${ad.category})\n`;
-        adsContext += `   Цена: ${ad.price}\n`;
-        adsContext += `   Локация: ${ad.location}\n`;
-        if (bookedPeriods) {
-          adsContext += `   Занято: ${bookedPeriods}\n`;
-        }
         const adId = typeof ad._id === 'object' && ad._id !== null && 'toString' in ad._id
           ? (ad._id as { toString: () => string }).toString()
           : String(ad._id);
-        adsContext += `   ID: ${adId}\n\n`;
+
+        adsContext += `ОБЪЯВЛЕНИЕ ${index + 1}:\n`;
+        adsContext += `Название: ${ad.title}\n`;
+        adsContext += `Категория: ${ad.category}\n`;
+        adsContext += `Описание: ${ad.description?.substring(0, 200)}${ad.description && ad.description.length > 200 ? '...' : ''}\n`;
+        adsContext += `Цена: ${ad.price}\n`;
+        adsContext += `Локация: ${ad.location}\n`;
+        if (ad.images && ad.images.length > 0) {
+          adsContext += `Изображений: ${ad.images.length}\n`;
+        }
+        if (ad.address) {
+          adsContext += `Адрес: ${ad.address}\n`;
+        }
+        adsContext += `ID объявления: ${adId}\n`;
+        adsContext += `Ссылка: /ads/${adId}\n\n`;
       });
+      
+      adsContext += "=== КОНЕЦ ДАННЫХ ===\n";
+      adsContext += "ВАЖНО: Представь эти объявления пользователю в удобном формате. Укажи ID для каждого, чтобы пользователь мог перейти по ссылке.";
+    } else if (shouldSearch) {
+      adsContext = "\n\n=== РЕЗУЛЬТАТЫ ПОИСКА ===\n";
+      adsContext += "По запросу пользователя ничего не найдено в базе данных.\n";
+      adsContext += "Предложи пользователю уточнить запрос или попробовать другие ключевые слова.";
     }
 
     // Вызываем OpenAI API
@@ -124,7 +176,10 @@ export async function POST(request: NextRequest) {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage + adsContext },
+          { 
+            role: "user", 
+            content: userMessage + (adsContext ? `\n\n${adsContext}` : "")
+          },
         ],
         temperature: 0.7,
         max_tokens: 1000,
@@ -173,7 +228,7 @@ export async function POST(request: NextRequest) {
               price: ad.price,
               location: ad.location,
               images: ad.images || [],
-              bookings: ad.bookings || [],
+              address: ad.address || null,
             };
           }),
         },
@@ -196,36 +251,101 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Функция для извлечения ключевых слов из запроса пользователя
-function extractSearchKeywords(message: string): string[] {
-  const keywords: string[] = [];
+// Интерфейс для параметров поиска
+interface SearchParams {
+  keywords: string[];
+  location?: string;
+  category?: string;
+  maxPrice?: number;
+}
+
+// Функция для извлечения параметров поиска из запроса пользователя
+function extractSearchParams(message: string): SearchParams {
+  const params: SearchParams = {
+    keywords: [],
+  };
   const lowerMessage = message.toLowerCase();
 
-  // Категории оборудования
-  const categories = [
-    "гитара", "guitar", "бас", "bass", "электрогитара",
-    "барабан", "drum", "ударные", "установка",
-    "клавишные", "piano", "синтезатор", "keyboard",
-    "микрофон", "microphone", "mic", "мик",
-    "dj", "диджей", "микшер", "mixer", "вертушка", "turntable",
-    "студия", "studio", "звукозапись", "recording",
-    "акустика", "acoustic", "колонка", "speaker", "монитор",
-    "инструмент", "instrument", "оборудование", "equipment",
-  ];
+  // Категории оборудования (соответствие с категориями в БД)
+  const categoryMap: Record<string, string> = {
+    "гитара": "Инструменты",
+    "guitar": "Инструменты",
+    "бас": "Инструменты",
+    "bass": "Инструменты",
+    "электрогитара": "Инструменты",
+    "барабан": "Инструменты",
+    "drum": "Инструменты",
+    "ударные": "Инструменты",
+    "установка": "Инструменты",
+    "клавишные": "Клавишные",
+    "piano": "Клавишные",
+    "синтезатор": "Клавишные",
+    "keyboard": "Клавишные",
+    "микрофон": "Микрофоны",
+    "microphone": "Микрофоны",
+    "mic": "Микрофоны",
+    "мик": "Микрофоны",
+    "dj": "DJ оборудование",
+    "диджей": "DJ оборудование",
+    "микшер": "DJ оборудование",
+    "mixer": "DJ оборудование",
+    "вертушка": "DJ оборудование",
+    "turntable": "DJ оборудование",
+    "студия": "Студии",
+    "studio": "Студии",
+    "звукозапись": "Студии",
+    "recording": "Студии",
+    "акустика": "Аудио",
+    "acoustic": "Аудио",
+    "колонка": "Аудио",
+    "speaker": "Аудио",
+    "монитор": "Аудио",
+    "инструмент": "Инструменты",
+    "instrument": "Инструменты",
+    "оборудование": "",
+    "equipment": "",
+  };
 
-  // Поиск по категориям
-  categories.forEach(category => {
-    if (lowerMessage.includes(category)) {
-      keywords.push(category);
+  // Поиск категорий
+  for (const [keyword, category] of Object.entries(categoryMap)) {
+    if (lowerMessage.includes(keyword)) {
+      if (category) {
+        params.category = category;
+      }
+      params.keywords.push(keyword);
     }
-  });
-
-  // Если не найдено ключевых слов, используем общие слова из запроса
-  if (keywords.length === 0) {
-    const words = message.split(/\s+/).filter(word => word.length > 3);
-    keywords.push(...words.slice(0, 3));
   }
 
-  return keywords;
+  // Поиск локации (города Казахстана)
+  const cities = [
+    "алматы", "астана", "шымкент", "караганда", "актобе", "тараз",
+    "павлодар", "усть-каменогорск", "семей", "атырау", "костанай",
+    "кызылорда", "петропавловск", "актау", "туркестан", "орал"
+  ];
+  
+  for (const city of cities) {
+    if (lowerMessage.includes(city)) {
+      params.location = city;
+      break;
+    }
+  }
+
+  // Поиск цены (максимальная цена)
+  const priceMatch = message.match(/(?:до|макс|максимум|не более)\s*(\d+)/i);
+  if (priceMatch) {
+    params.maxPrice = parseInt(priceMatch[1]);
+  }
+
+  // Если не найдено ключевых слов, используем значимые слова из запроса
+  if (params.keywords.length === 0) {
+    // Убираем стоп-слова
+    const stopWords = ["найди", "ищу", "покажи", "есть", "нужен", "нужно", "хочу", "хотел", "бы", "в", "на", "для", "с", "по", "от", "до", "и", "или", "а", "но", "что", "как", "где", "когда"];
+    const words = message
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !stopWords.includes(word.toLowerCase()));
+    params.keywords.push(...words.slice(0, 5));
+  }
+
+  return params;
 }
 

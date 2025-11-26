@@ -147,7 +147,12 @@ async function migrateAds() {
 
 async function migrateAvatars() {
   try {
-    const users = await User.find({ avatar: { $exists: true, $ne: null, $ne: "" } }).lean();
+    const users = await User.find({ 
+      avatar: { 
+        $exists: true, 
+        $nin: [null, ""] 
+      } 
+    }).lean();
     console.log(`\nНайдено ${users.length} пользователей с аватарами`);
 
     let updated = 0;
