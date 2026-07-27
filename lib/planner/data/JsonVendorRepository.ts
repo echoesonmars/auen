@@ -35,15 +35,13 @@ export class JsonVendorRepository implements VendorRepository {
   }
 
   cities(): string[] {
-    return [...new Set(this.items.map((i) => i.city))].sort();
+    return Array.from(new Set(this.items.map((i) => i.city))).sort();
   }
 
   districts(city: string): string[] {
-    return [
-      ...new Set(
-        this.items.filter((i) => i.city === city).map((i) => i.district),
-      ),
-    ].sort();
+    return Array.from(
+      new Set(this.items.filter((i) => i.city === city).map((i) => i.district)),
+    ).sort();
   }
 }
 

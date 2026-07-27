@@ -1,17 +1,10 @@
 "use client";
 
-import HeroSection from "./components/HeroSection";
-import { useMetadata } from "./hooks/useMetadata";
+// The homepage now leads with the Event Budget Planner (the product), rendered
+// in Auen's existing UI. The music-rental hero remains available as a component
+// (app/components/HeroSection) if you want to restore or reuse it.
+import PlannerPage from "./planner/page";
 
 export default function Home() {
-  useMetadata(
-    "Auen - Платформа для аренды музыкального оборудования",
-    "Арендуйте и сдавайте в аренду музыкальное оборудование, студии звукозаписи, инструменты и DJ-оборудование в Казахстане. Надежная платформа для музыкантов."
-  );
-
-  return (
-    <div className="relative bg-color-lightest min-h-screen">
-      <HeroSection />
-    </div>
-  );
+  return <PlannerPage />;
 }

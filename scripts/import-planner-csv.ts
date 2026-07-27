@@ -113,7 +113,7 @@ function main() {
     const existing = parseVendors(JSON.parse(readFileSync(DATA, "utf8")));
     const byId = new Map(existing.map((v) => [v.id, v]));
     for (const v of incoming) byId.set(v.id, v);
-    result = [...byId.values()];
+    result = Array.from(byId.values());
   } else {
     result = incoming;
   }

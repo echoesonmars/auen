@@ -23,12 +23,12 @@ class FixtureRepo implements VendorRepository {
     );
   }
   cities() {
-    return [...new Set(this.items.map((i) => i.city))];
+    return Array.from(new Set(this.items.map((i) => i.city)));
   }
   districts(city: string) {
-    return [
-      ...new Set(this.items.filter((i) => i.city === city).map((i) => i.district)),
-    ];
+    return Array.from(
+      new Set(this.items.filter((i) => i.city === city).map((i) => i.district)),
+    );
   }
 }
 
