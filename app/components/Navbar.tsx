@@ -178,6 +178,28 @@ export default function Navbar() {
               </span>
             </button>
 
+            {/* Budget planner */}
+            <Link
+              href="/planner"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-color-dark hover:bg-color-lightest transition-colors text-sm font-medium"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 3v18h18" />
+                <rect x="7" y="10" width="3" height="7" />
+                <rect x="14" y="6" width="3" height="11" />
+              </svg>
+              <span className="hidden lg:inline">Планировщик</span>
+            </Link>
+
             {/* Chat */}
             <Link
               href="/chat"

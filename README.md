@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+> **Event Budget Planner** — a deterministic event-budget planner (Astana, KZT)
+> lives at `/planner`. See **[PLANNER.md](./PLANNER.md)** for how it works, how to
+> add vendors/cities, and how the optimizer is tuned. Run its tests with
+> `npm test`.
+
 ## Getting Started
 
 First, run the development server:
