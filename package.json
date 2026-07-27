@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "generate-planner-seed": "node scripts/generate-planner-seed.mjs",
     "import-planner-csv": "npx tsx scripts/import-planner-csv.ts",
+    "import-2gis": "npx tsx scripts/import-2gis.ts",
     "create-collections": "npx tsx scripts/create-collections.ts",
     "check-collections": "npx tsx scripts/check-collections.ts",
     "set-admin": "npx tsx scripts/set-admin.ts",

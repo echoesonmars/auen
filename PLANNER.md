@@ -153,6 +153,24 @@ Two ways to add rows:
   npm run generate-planner-seed
   ```
 
+- **Import REAL Astana places from 2GIS** (real name/address/phone/rating/district;
+  prices are *estimated* per category since 2GIS has no vendor prices):
+
+  ```bash
+  TWOGIS_API_KEY=xxxx npm run import-2gis            # replace vendors.json
+  TWOGIS_API_KEY=xxxx npm run import-2gis -- --merge # upsert into existing
+  TWOGIS_API_KEY=xxxx npm run import-2gis -- --dry-run
+  ```
+
+  Get a key from the [2GIS Platform Manager](https://docs.2gis.com/en/platform-manager/subscription/keys)
+  (free demo key available). The importer queries the 2GIS Catalog API around
+  Astana for each planner category (banquet halls, конференц-зал, кейтеринг,
+  тамада, фотограф, аренда оборудования, …), maps results to `VendorItem`, and
+  tags every row `2gis` + `price-estimated` with `verified: false`. Prices are
+  deterministic estimates in the realistic ranges above (seeded by place id +
+  rating), so re-running is stable. Keep the API key in server env only — never
+  ship it to the browser. Respect 2GIS's terms on caching/storing their data.
+
 > **Demo data note:** every seeded row is `verified: false`,
 > `source: "synthetic"`, and the UI shows a banner: *“Demo prices are estimates,
 > not live vendor quotes.”* Replace them with real collected data via the CSV
