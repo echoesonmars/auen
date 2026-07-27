@@ -79,6 +79,10 @@ export interface VendorItem {
   halal?: boolean;
   /** staff */
   role?: string;
+
+  /** optional geocoordinates, used for the map */
+  lat?: number;
+  lon?: number;
 }
 
 export interface Preferences {

@@ -29,8 +29,8 @@ const ASTANA = { lon: 71.4304, lat: 51.1282 };
 const RADIUS_M = 40000;
 const FIELDS =
   "items.point,items.address,items.rubrics,items.contact_groups,items.reviews,items.adm_div";
-const PAGE_SIZE = 50;
-const MAX_PAGES = 2; // up to 100 places per collector
+const PAGE_SIZE = 10; // 2GIS caps page_size at 10
+const MAX_PAGES = 5; // up to 50 places per collector
 
 // --- 2GIS response shapes (minimal) ----------------------------------------
 interface TwoGisContact {
@@ -51,10 +51,15 @@ interface TwoGisReviews {
   general_rating?: number;
   general_review_count?: number;
 }
+interface TwoGisPoint {
+  lat?: number;
+  lon?: number;
+}
 interface TwoGisItem {
   id?: string;
   name?: string;
   address_name?: string;
+  point?: TwoGisPoint;
   adm_div?: TwoGisAdmDiv[];
   contact_groups?: TwoGisContactGroup[];
   rubrics?: TwoGisRubric[];
@@ -110,12 +115,13 @@ const COLLECTORS: Collector[] = [
   { category: "logistics", query: "типография", price_model: "flat", priceMin: 20000, priceMax: 120000, step: 2500, capMin: 0, capMax: 100000, tags: ["printing", "signage"] },
 ];
 
+// 2GIS names Astana districts like "Есиль район", "Алматы район", …
 const DISTRICT_MAP: [RegExp, string][] = [
   [/есил|есіл/i, "Esil"],
-  [/алматин/i, "Almaty"],
+  [/алмат/i, "Almaty"],
   [/сарыарк|сарыарқ/i, "Saryarka"],
-  [/байконыр|байконур/i, "Baikonyr"],
-  [/нуринск|нура/i, "Nura"],
+  [/байкон/i, "Baikonyr"],
+  [/нура|нұра|нуринск/i, "Nura"],
 ];
 
 // --- deterministic price estimate -------------------------------------------
@@ -184,6 +190,10 @@ function toVendor(item: TwoGisItem, c: Collector): VendorItem | null {
   if (c.role) vendor.role = c.role;
   if (c.minOrder != null) vendor.min_order = c.minOrder;
   if (halal !== undefined) vendor.halal = halal;
+  if (typeof item.point?.lat === "number" && typeof item.point?.lon === "number") {
+    vendor.lat = item.point.lat;
+    vendor.lon = item.point.lon;
+  }
   return vendor;
 }
 

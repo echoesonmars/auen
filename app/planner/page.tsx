@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { BlurFade } from "@/components/ui/blur-fade";
+import type { MapMarker } from "./PlannerMap";
 import { useMetadata } from "@/app/hooks/useMetadata";
 import { vendorRepository } from "@/lib/planner/data/JsonVendorRepository";
 import { planAll } from "@/lib/planner/optimizer/optimizer";
@@ -84,6 +86,14 @@ const EXAMPLES: { key: TKey; req: PlanRequest }[] = [
     },
   },
 ];
+
+// Leaflet must load client-side only.
+const PlannerMap = dynamic(() => import("./PlannerMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[440px] rounded-2xl border border-color-light bg-color-light animate-pulse" />
+  ),
+});
 
 const card = "bg-white rounded-2xl border border-color-light shadow-sm";
 const label = "block text-sm font-medium text-color-dark mb-1";
@@ -189,6 +199,61 @@ export default function PlannerPage() {
     const current = cands.find((x) => x.v.id === currentId);
     return { cands, currentCost: current?.cost ?? 0 };
   }
+
+  const catLabelMap = useMemo(() => {
+    const m = {} as Record<Category, string>;
+    ALL_CATS.forEach((c) => (m[c] = translate(lang, `category.${c}` as TKey)));
+    return m;
+  }, [lang]);
+
+  // Markers: the chosen plan items (highlighted) + nearby candidates per
+  // required category, all real 2GIS places that carry coordinates.
+  const mapMarkers: MapMarker[] = useMemo(() => {
+    if (!plan.feasible) return [];
+    const chosenIds = new Set(displayItems.map((i) => i.item.id));
+    const out: MapMarker[] = [];
+    for (const it of displayItems) {
+      if (typeof it.item.lat === "number" && typeof it.item.lon === "number") {
+        out.push({
+          id: it.item.id,
+          name: it.item.name,
+          category: it.category,
+          categoryLabel: catLabelMap[it.category],
+          lat: it.item.lat,
+          lon: it.item.lon,
+          rating: it.item.rating,
+          district: it.item.district,
+          chosen: true,
+          priceLabel: formatKzt(it.cost),
+        });
+      }
+    }
+    for (const cat of req.required_categories) {
+      const cands = candidatesFor(vendorRepository.byCategory(cat, req.city), req)
+        .filter(
+          (v) =>
+            typeof v.lat === "number" &&
+            typeof v.lon === "number" &&
+            !chosenIds.has(v.id),
+        )
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 40);
+      for (const v of cands) {
+        out.push({
+          id: v.id,
+          name: v.name,
+          category: cat,
+          categoryLabel: catLabelMap[cat],
+          lat: v.lat as number,
+          lon: v.lon as number,
+          rating: v.rating,
+          district: v.district,
+          chosen: false,
+        });
+      }
+    }
+    return out;
+  }, [plan, displayItems, req, catLabelMap]);
 
   function shareLink() {
     try {
@@ -565,6 +630,17 @@ export default function PlannerPage() {
                 );
               })}
             </div>
+
+            {mapMarkers.length > 0 && (
+              <BlurFade delay={0.05}>
+                <div className={`${card} p-5 mt-6`}>
+                  <div className="text-sm font-medium text-color-dark mb-3">
+                    {t("map.title")}
+                  </div>
+                  <PlannerMap markers={mapMarkers} />
+                </div>
+              </BlurFade>
+            )}
 
             <div className={`${card} p-5 mt-6 flex flex-wrap justify-between items-center gap-3`}>
               <div className="text-lg text-color-dark">

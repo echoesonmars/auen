@@ -41,6 +41,8 @@ export const VendorItemSchema = z
     cuisine: z.string().optional(),
     halal: z.boolean().optional(),
     role: z.string().optional(),
+    lat: z.number().optional(),
+    lon: z.number().optional(),
   })
   .refine((v) => v.capacity_max >= v.capacity_min, {
     message: 'capacity_max must be >= capacity_min',

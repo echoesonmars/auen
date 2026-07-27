@@ -77,6 +77,8 @@ const en = {
   'export.share': 'Copy share link',
   'export.copied': 'Link copied!',
 
+  'map.title': 'Venues & vendors map',
+
   'examples.title': 'Worked examples',
   'examples.run': 'Load',
   'examples.flagship': '3 000 000 ₸ · Conference · 100 guests · full day',

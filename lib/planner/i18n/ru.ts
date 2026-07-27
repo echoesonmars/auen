@@ -79,6 +79,8 @@ const ru: typeof en = {
   'export.share': 'Копировать ссылку',
   'export.copied': 'Ссылка скопирована!',
 
+  'map.title': 'Карта площадок и подрядчиков',
+
   'examples.title': 'Готовые примеры',
   'examples.run': 'Загрузить',
   'examples.flagship': '3 000 000 ₸ · Конференция · 100 гостей · полный день',

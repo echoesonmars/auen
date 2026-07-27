@@ -79,6 +79,8 @@ const kk: typeof en = {
   'export.share': 'Сілтемені көшіру',
   'export.copied': 'Сілтеме көшірілді!',
 
+  'map.title': 'Алаңдар мен мердігерлер картасы',
+
   'examples.title': 'Дайын мысалдар',
   'examples.run': 'Жүктеу',
   'examples.flagship': '3 000 000 ₸ · Конференция · 100 қонақ · толық күн',
