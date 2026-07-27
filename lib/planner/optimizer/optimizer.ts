@@ -46,13 +46,6 @@ function byUtilityDesc(a: Candidate, b: Candidate): number {
   return a.item.id < b.item.id ? -1 : 1;
 }
 
-/** Cheapest-first, then highest utility, then id. */
-function byCostAsc(a: Candidate, b: Candidate): number {
-  if (a.cost !== b.cost) return a.cost - b.cost;
-  if (b.utility !== a.utility) return b.utility - a.utility;
-  return a.item.id < b.item.id ? -1 : 1;
-}
-
 // ---------------------------------------------------------------------------
 // Candidate building
 // ---------------------------------------------------------------------------
