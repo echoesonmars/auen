@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app). а
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app). а порш панаамера
 
 > **Event Budget Planner** — a deterministic event-budget planner (Astana, KZT)
 > lives at `/planner`. See **[PLANNER.md](./PLANNER.md)** for how it works, how to
